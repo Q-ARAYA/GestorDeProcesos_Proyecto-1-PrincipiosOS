@@ -1,97 +1,77 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.tec.minipc.gui;
 
 import com.tec.minipc.core.Assembler;
 import com.tec.minipc.core.AssemblyException;
-import com.tec.minipc.core.Cpu;
 import com.tec.minipc.core.PCB;
+import com.tec.minipc.core.ProcessManager;
 import com.tec.minipc.model.Instruction;
 import com.tec.minipc.model.Memory;
 import com.tec.minipc.model.Registers;
-
-import javax.swing.BoxLayout;
-import javax.swing.JButton;
-import javax.swing.JFileChooser;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JSpinner;
-import javax.swing.SpinnerNumberModel;
+import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
-import java.awt.BorderLayout;
-import java.awt.FlowLayout;
+import java.awt.*;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Ventana principal del simulador Mini PC. Junta los 4 paneles (código,
- * registros, PCB y memoria) y hace de puente con el motor de ejecución
- * (Assembler + Memory + Registers + PCB + Cpu).
- */
+/** Ventana principal del simulador y coordinación de la ejecución FCFS. */
 public class MainFrame extends JFrame {
-
     private final JButton btnCargar = new JButton("Cargar .asm...");
     private final JSpinner spTotal = new JSpinner(new SpinnerNumberModel(256, Memory.TAMANO_MINIMO, 256, 1));
-    private final JSpinner spSO = new JSpinner(new SpinnerNumberModel(64, 1, 255, 1));
-    private final JButton btnSiguiente = new JButton("Siguiente");
+    private final JSpinner spKernel = new JSpinner(new SpinnerNumberModel(25, 25, 80, 5));
+    private final JButton btnSiguiente = new JButton("Siguiente (1 s)");
     private final JButton btnEjecutarTodo = new JButton("Ejecutar todo");
-    private final JButton btnReiniciar = new JButton("Reiniciar");
-    private final JLabel lblMensaje = new JLabel(" ");
-
+    private final JButton btnReiniciar = new JButton("Reiniciar simulación");
+    private final JLabel lblMensaje = new JLabel("Cargue hasta cinco programas .asm.");
     private final CodigoPanel codigoPanel = new CodigoPanel();
     private final RegistrosPanel registrosPanel = new RegistrosPanel();
     private final PcbPanel pcbPanel = new PcbPanel();
     private final MemoriaPanel memoriaPanel = new MemoriaPanel();
+    private final TrabajosPanel trabajosPanel = new TrabajosPanel();
+    private final DispositivosPanel dispositivosPanel = new DispositivosPanel(this::onEnviarEntrada);
 
-    // Estado de la ejecución actual
-    private List<Instruction> instrucciones;
     private Memory memoria;
-    private Registers registros;
-    private PCB pcb;
-    private Cpu cpu;
-    private int direccionBase;
-    private File archivoActual;
+    private ProcessManager gestor;
+    private int tamanoConfigurado;
+    private int kernelPorcentajeConfigurado;
+    private ProcessManager.Proceso procesoMostrado;
 
     public MainFrame() {
-        super("Mini PC - Simulador (Principios de Sistemas Operativos)");
+        super("Mini PC - Gestor de procesos FCFS");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(1100, 700);
+        setSize(1250, 760);
         setLocationRelativeTo(null);
-
         armarLayout();
         registrarAcciones();
         actualizarBotones();
     }
 
     private void armarLayout() {
-        JPanel panelControles = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        panelControles.add(btnCargar);
-        panelControles.add(new JLabel("Memoria total:"));
-        panelControles.add(spTotal);
-        panelControles.add(new JLabel("Espacio S.O.:"));
-        panelControles.add(spSO);
-        panelControles.add(btnSiguiente);
-        panelControles.add(btnEjecutarTodo);
-        panelControles.add(btnReiniciar);
+        JPanel controles = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        controles.add(btnCargar);
+        controles.add(new JLabel("Memoria total:")); controles.add(spTotal);
+        controles.add(new JLabel("Kernel (% de memoria):")); controles.add(spKernel);
+        controles.add(btnSiguiente); controles.add(btnEjecutarTodo); controles.add(btnReiniciar);
 
-        JPanel panelDerecho = new JPanel();
-        panelDerecho.setLayout(new BoxLayout(panelDerecho, BoxLayout.Y_AXIS));
-        panelDerecho.add(registrosPanel);
-        panelDerecho.add(pcbPanel);
+        JPanel derecha = new JPanel(new BorderLayout(4, 4));
+        JPanel datos = new JPanel();
+        datos.setLayout(new BoxLayout(datos, BoxLayout.Y_AXIS));
+        datos.add(registrosPanel); datos.add(pcbPanel);
+        derecha.add(datos, BorderLayout.CENTER);
+        derecha.add(trabajosPanel, BorderLayout.SOUTH);
+        derecha.setPreferredSize(new Dimension(460, 420));
 
-        codigoPanel.setPreferredSize(new java.awt.Dimension(260, 400));
-        panelDerecho.setPreferredSize(new java.awt.Dimension(260, 400));
-
-        setLayout(new BorderLayout());
-        add(panelControles, BorderLayout.NORTH);
+        codigoPanel.setPreferredSize(new Dimension(300, 420));
+        JPanel centro = new JPanel(new BorderLayout(4, 4));
+        centro.add(memoriaPanel, BorderLayout.CENTER);
+        dispositivosPanel.setPreferredSize(new Dimension(500, 190));
+        centro.add(dispositivosPanel, BorderLayout.SOUTH);
+        setLayout(new BorderLayout(4, 4));
+        add(controles, BorderLayout.NORTH);
         add(codigoPanel, BorderLayout.WEST);
-        add(panelDerecho, BorderLayout.EAST);
-        add(memoriaPanel, BorderLayout.CENTER);
+        add(derecha, BorderLayout.EAST);
+        add(centro, BorderLayout.CENTER);
         add(lblMensaje, BorderLayout.SOUTH);
     }
 
@@ -104,120 +84,189 @@ public class MainFrame extends JFrame {
 
     private void onCargar() {
         JFileChooser chooser = new JFileChooser();
+        chooser.setMultiSelectionEnabled(true);
         chooser.setFileFilter(new FileNameExtensionFilter("Archivos ensamblador (*.asm)", "asm"));
-        int resultado = chooser.showOpenDialog(this);
-        if (resultado != JFileChooser.APPROVE_OPTION) {
-            return;
-        }
-        cargarPrograma(chooser.getSelectedFile());
+        if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) return;
+        cargarProgramas(chooser.getSelectedFiles());
     }
 
-    /**
-     * Lee, valida y carga un archivo .asm, y deja todo listo para ejecutar.
-     * Separado de onCargar() para poder probarlo sin depender del diálogo de archivos.
-     * @param archivo el archivo .asm a cargar
-     */
-    void cargarPrograma(File archivo) {
-        int tamanoTotal = (Integer) spTotal.getValue();
-        int tamanoSO = (Integer) spSO.getValue();
-
-        try {
-            List<Instruction> nuevasInstrucciones = Assembler.loadFromFile(archivo);
-            Memory nuevaMemoria = new Memory(tamanoTotal, tamanoSO);
-            int nuevaBase = nuevaMemoria.loadProgram(nuevasInstrucciones);
-
-            // Solo si todo salió bien reemplazamos el estado actual
-            this.instrucciones = nuevasInstrucciones;
-            this.memoria = nuevaMemoria;
-            this.direccionBase = nuevaBase;
-            this.archivoActual = archivo;
-            this.registros = new Registers();
-            this.registros.setPc(direccionBase);
-            this.pcb = new PCB(1, archivo.getName(), direccionBase, memoria.getUserEnd(), instrucciones.size());
-            this.cpu = new Cpu(memoria, registros, pcb);
-
-            codigoPanel.cargar(instrucciones);
-            codigoPanel.resaltar(0);
-            memoriaPanel.actualizar(memoria, direccionBase);
-            registrosPanel.actualizar(registros);
-            pcbPanel.actualizar(pcb);
-
-            lblMensaje.setText("Programa cargado: " + archivo.getName() + " (" + instrucciones.size() + " instrucciones).");
-        } catch (IOException e) {
-            mostrarError("No se pudo leer el archivo:\n" + e.getMessage());
-        } catch (AssemblyException e) {
-            mostrarError(mensajeDeErrores(e));
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            mostrarError(e.getMessage());
+    private void cargarProgramas(File[] archivos) {
+        int total = (Integer) spTotal.getValue();
+        int porcentajeKernel = (Integer) spKernel.getValue();
+        if (gestor != null && (total != tamanoConfigurado || porcentajeKernel != kernelPorcentajeConfigurado)) {
+            mostrarError("La configuración de memoria no puede cambiar mientras hay una simulación activa. Reinicie primero.");
+            return;
         }
-
+        List<File> validos = new ArrayList<>();
+        List<List<Instruction>> programas = new ArrayList<>();
+        StringBuilder errores = new StringBuilder();
+        for (File archivo : archivos) {
+            try {
+                validos.add(archivo);
+                programas.add(Assembler.loadFromFile(archivo));
+            } catch (IOException | AssemblyException | RuntimeException ex) {
+                validos.remove(archivo);
+                errores.append(archivo.getName()).append(": ").append(ex.getMessage()).append("\n\n");
+            }
+        }
+        if (validos.isEmpty()) {
+            if (errores.length() > 0) mostrarError(errores.toString());
+            return;
+        }
+        if (gestor == null) {
+            try {
+                memoria = new Memory(total, calcularTamanoKernel(total, porcentajeKernel));
+                gestor = new ProcessManager(memoria);
+                tamanoConfigurado = total;
+                kernelPorcentajeConfigurado = porcentajeKernel;
+            } catch (IllegalArgumentException ex) { mostrarError(ex.getMessage()); return; }
+        }
+        int admitidos = 0;
+        for (int i = 0; i < validos.size(); i++) {
+            try {
+                gestor.admitir(validos.get(i).getName(), programas.get(i));
+                admitidos++;
+            } catch (IllegalStateException ex) {
+                errores.append(validos.get(i).getName()).append(": ").append(ex.getMessage()).append("\n\n");
+            }
+        }
+        if (procesoMostrado == null && gestor.getActual() == null) {
+            // Se selecciona el primero de la cola para inicializar los paneles; el despacho ocurre al avanzar.
+            procesoMostrado = gestor.getProcesos().isEmpty() ? null : gestor.getProcesos().get(0);
+        }
+        refrescarTodo(true);
+        actualizarDispositivos();
+        lblMensaje.setText("Programas admitidos: " + admitidos + ". Cola FCFS: " + gestor.getProcesos().size()
+                + "/" + ProcessManager.MAX_PROCESOS + ". Kernel: " + kernelPorcentajeConfigurado + "% ("
+                + memoria.getOsSize() + "/" + memoria.getTotalSize() + " celdas).");
+        if (errores.length() > 0) JOptionPane.showMessageDialog(this, errores.toString(), "Carga parcial", JOptionPane.WARNING_MESSAGE);
         actualizarBotones();
     }
 
-    private String mensajeDeErrores(AssemblyException e) {
-        StringBuilder sb = new StringBuilder("El archivo tiene errores de formato:\n");
-        for (String error : e.getErrores()) {
-            sb.append(" - ").append(error).append("\n");
-        }
-        return sb.toString();
-    }
-
-    private void mostrarError(String mensaje) {
-        JOptionPane.showMessageDialog(this, mensaje, "Error", JOptionPane.ERROR_MESSAGE);
-        lblMensaje.setText("No se pudo cargar el programa.");
-    }
-
     private void onSiguiente() {
-        if (cpu == null || cpu.isTerminado()) {
-            return;
-        }
-        int indiceEjecutado = (registros.getPc() - direccionBase) + 1;
-        Instruction ejecutada = cpu.step();
-
-        refrescarPaneles();
-
-        if (ejecutada != null) {
-            codigoPanel.resaltar(indiceEjecutado);
-        }
-
-        if (cpu.isTerminado()) {
-            lblMensaje.setText("Programa terminado.");
-        } else {
-            lblMensaje.setText("Se ejecutó: " + ejecutada.getSourceLine());
-        }
-
+        if (gestor == null || !gestor.hayPendientes()) return;
+        ProcessManager.Proceso anterior = gestor.getActual();
+        if (anterior == null) anterior = gestor.getProcesos().stream()
+                .filter(p -> p.getPcb().getEstado() == PCB.Estado.LISTO).findFirst().orElse(null);
+        Instruction ejecutada = gestor.step();
+        ProcessManager.Proceso actual = gestor.getActual();
+        boolean cambio = actual != anterior && actual != null;
+        if (cambio) procesoMostrado = actual;
+        else if (actual != null) procesoMostrado = actual;
+        refrescarTodo(cambio);
+        actualizarDispositivos();
+        if (ejecutada != null) lblMensaje.setText("CPU: " + (anterior == null ? "" : anterior.getPcb().getNombrePrograma())
+                + " · " + ejecutada.getSourceLine() + " · "
+                + (anterior == null ? 0 : anterior.getPcb().getTiempoCpuSegundos()) + " s de CPU.");
+        else if (gestor.hayEsperandoEntrada()) lblMensaje.setText("Proceso detenido en INT 09H; escriba un valor en el teclado simulado.");
+        if (!gestor.hayPendientes()) lblMensaje.setText("Todos los procesos finalizaron.");
         actualizarBotones();
     }
 
     private void onEjecutarTodo() {
-        if (cpu == null || cpu.isTerminado()) {
+        if (gestor == null || !gestor.hayPendientes()) return;
+        int pasos;
+        try {
+            pasos = gestor.runAll();
+        } catch (IllegalStateException ex) {
+            refrescarTodo(false);
+            actualizarDispositivos();
+            mostrarError(ex.getMessage());
+            actualizarBotones();
             return;
         }
-        int pasos = cpu.runAll();
-        refrescarPaneles();
-        codigoPanel.resaltar(instrucciones.size());
-        lblMensaje.setText("Se ejecutaron " + pasos + " instrucciones. Programa terminado.");
+        procesoMostrado = ultimoProceso();
+        refrescarTodo(true);
+        actualizarDispositivos();
+        if (gestor.hayEsperandoEntrada()) {
+            lblMensaje.setText("Ejecución pausada: " + gestor.getCantidadEsperandoEntrada() + " proceso(s) esperan INT 09H.");
+        } else {
+            lblMensaje.setText("Ejecución automática: " + pasos + " segundos de CPU procesados.");
+        }
         actualizarBotones();
     }
 
-    private void onReiniciar() {
-        if (archivoActual == null) {
-            return;
-        }
-        cargarPrograma(archivoActual); // vuelve a cargar el mismo archivo desde cero
+    private ProcessManager.Proceso ultimoProceso() {
+        List<ProcessManager.Proceso> lista = gestor.getProcesos();
+        return lista.isEmpty() ? null : lista.get(lista.size() - 1);
     }
 
-    private void refrescarPaneles() {
-        registrosPanel.actualizar(registros);
-        pcbPanel.actualizar(pcb);
-        memoriaPanel.actualizar(memoria, registros.getPc());
+    private void onReiniciar() {
+        gestor = null; memoria = null; procesoMostrado = null;
+        codigoPanel.cargar(new ArrayList<>());
+        registrosPanel.actualizar(new Registers());
+        pcbPanel.limpiar();
+        trabajosPanel.actualizar(new ArrayList<>());
+        dispositivosPanel.limpiar();
+        try {
+            int total = (Integer) spTotal.getValue();
+            int porcentajeKernel = (Integer) spKernel.getValue();
+            memoria = new Memory(total, calcularTamanoKernel(total, porcentajeKernel));
+            memoriaPanel.actualizar(memoria, -1);
+        } catch (IllegalArgumentException ex) {
+            memoriaPanel.actualizar(new Memory(256, 64), -1);
+        }
+        lblMensaje.setText("Simulación reiniciada. Cargue programas .asm.");
+        actualizarBotones();
+    }
+
+    private void refrescarTodo(boolean mostrarCodigo) {
+        if (gestor == null || memoria == null) return;
+        ProcessManager.Proceso actual = gestor.getActual();
+        if (actual != null) procesoMostrado = actual;
+        if (procesoMostrado != null) {
+            if (mostrarCodigo) codigoPanel.cargar(procesoMostrado.getInstrucciones());
+            Registers r = procesoMostrado.getRegistros();
+            registrosPanel.actualizar(r);
+            pcbPanel.actualizar(procesoMostrado.getPcb());
+            memoriaPanel.actualizar(memoria, r.getPc());
+            int base = procesoMostrado.getBase();
+            int fin = base + procesoMostrado.getInstrucciones().size();
+            int pc = r.getPc();
+            codigoPanel.resaltar(base >= 0 && pc >= base && pc < fin ? pc - base : -1);
+        } else {
+            memoriaPanel.actualizar(memoria, -1);
+        }
+        trabajosPanel.actualizar(gestor.getProcesos());
+    }
+
+    private void mostrarError(String mensaje) {
+        JOptionPane.showMessageDialog(this, mensaje, "Error", JOptionPane.ERROR_MESSAGE);
+        lblMensaje.setText("No se pudo completar la operación.");
+    }
+
+    private void onEnviarEntrada(int valor) {
+        if (gestor == null) {
+            mostrarError("Cargue un programa que utilice INT 09H antes de enviar datos.");
+            return;
+        }
+        gestor.proveerEntrada(valor);
+        actualizarDispositivos();
+        lblMensaje.setText(gestor.hayEsperandoEntrada()
+                ? "Entrada enviada al proceso en espera. Quedan " + gestor.getCantidadEsperandoEntrada() + "."
+                : "Entrada " + valor + " enviada al búfer del teclado simulado.");
+        actualizarBotones();
+    }
+
+    private void actualizarDispositivos() {
+        if (gestor == null) {
+            dispositivosPanel.actualizar(new ArrayList<>(), 0);
+            dispositivosPanel.actualizarPila(null, "");
+        } else {
+            dispositivosPanel.actualizar(gestor.getSalidaPantalla(), gestor.getCantidadEsperandoEntrada());
+            dispositivosPanel.actualizarPila(procesoMostrado == null ? null : procesoMostrado.getPila(),
+                    procesoMostrado == null ? "" : procesoMostrado.getPcb().getMensajeError());
+        }
+    }
+
+    private int calcularTamanoKernel(int memoriaTotal, int porcentaje) {
+        return (int) Math.ceil(memoriaTotal * porcentaje / 100.0);
     }
 
     private void actualizarBotones() {
-        boolean hayPrograma = cpu != null;
-        boolean terminado = hayPrograma && cpu.isTerminado();
-        btnSiguiente.setEnabled(hayPrograma && !terminado);
-        btnEjecutarTodo.setEnabled(hayPrograma && !terminado);
-        btnReiniciar.setEnabled(hayPrograma);
+        boolean pendientes = gestor != null && gestor.puedeAvanzar();
+        btnSiguiente.setEnabled(pendientes);
+        btnEjecutarTodo.setEnabled(pendientes);
+        btnReiniciar.setEnabled(gestor != null);
     }
 }

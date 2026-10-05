@@ -1,6 +1,5 @@
 package com.tec.minipc.gui;
 
-import com.tec.minipc.model.Instruction;
 import com.tec.minipc.model.Memory;
 
 import javax.swing.BorderFactory;
@@ -30,7 +29,7 @@ public class MemoriaPanel extends JPanel {
     private Memory memoriaActual;
 
     public MemoriaPanel() {
-        setBorder(BorderFactory.createTitledBorder("Memoria"));
+        setBorder(BorderFactory.createTitledBorder("Memoria (kernel y usuario)"));
         setLayout(new BorderLayout());
 
         modelo = new DefaultTableModel(COLUMNAS, 0) {
@@ -54,8 +53,7 @@ public class MemoriaPanel extends JPanel {
         this.memoriaActual = memoria;
         modelo.setRowCount(0);
         for (int direccion = 0; direccion < memoria.getTotalSize(); direccion++) {
-            Instruction instruccion = memoria.read(direccion);
-            String valor = (instruccion == null) ? "" : instruccion.getSourceLine();
+            String valor = memoria.getDisplayValue(direccion);
             modelo.addRow(new Object[]{direccion, valor});
         }
     }

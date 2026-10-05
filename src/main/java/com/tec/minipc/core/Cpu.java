@@ -21,12 +21,25 @@ public class Cpu {
     private final Memory memoria;
     private final Registers registros;
     private final PCB pcb;
+    private final ProcessStack pila;
     private boolean terminado;
+    private Integer entradaTeclado;
+    private Instruction instruccionEnCurso;
+    private int direccionInstruccionEnCurso = -1;
+    private int ticksRestantes;
+    private boolean finalizarSolicitado;
+    private boolean instruccionIniciadaEsteTick;
+    private long tiempoCpuSegundos;
 
     public Cpu(Memory memoria, Registers registros, PCB pcb) {
+        this(memoria, registros, pcb, new ProcessStack());
+    }
+
+    public Cpu(Memory memoria, Registers registros, PCB pcb, ProcessStack pila) {
         this.memoria = memoria;
         this.registros = registros;
         this.pcb = pcb;
+        this.pila = pila;
         this.terminado = false;
         pcb.setEstado(PCB.Estado.LISTO);
     }
@@ -47,51 +60,70 @@ public class Cpu {
         return memoria;
     }
 
+    public void setEntradaTeclado(int valor) { this.entradaTeclado = valor; }
+
+    public String getMensajeError() { return pcb.getMensajeError(); }
+    public boolean hayInstruccionEnCurso() { return ticksRestantes > 0; }
+    public boolean inicioInstruccionEsteTick() { return instruccionIniciadaEsteTick; }
+    public int getDireccionInstruccionEnCurso() { return direccionInstruccionEnCurso; }
+    public long getTiempoCpuSegundos() { return tiempoCpuSegundos; }
+
     /**
      * Ejecuta un solo ciclo fetch-decode-execute.
      * @return la instrucción ejecutada en este paso, o null si el programa ya había terminado.
      */
     public Instruction step() {
-        if (terminado) {
-            return null;
-        }
-        pcb.setEstado(PCB.Estado.EJECUTANDO);
-
-        int direccionActual = registros.getPc();
+        instruccionIniciadaEsteTick = false;
+        if (terminado) return null;
         int limite = pcb.getDireccionBase() + pcb.getTamanoInstrucciones();
 
-        boolean sinMasInstrucciones = direccionActual >= limite
-                || !memoria.isValidAddress(direccionActual)
-                || memoria.isEmpty(direccionActual);
+        if (ticksRestantes > 0) {
+            ticksRestantes--;
+            tiempoCpuSegundos++;
+            pcb.setTiempoCpuSegundos(tiempoCpuSegundos);
+            if (ticksRestantes == 0 && finalizarSolicitado) terminarProceso();
+            else if (pcb.getEstado() != PCB.Estado.ERROR) pcb.setEstado(PCB.Estado.EJECUTANDO);
+            pcb.actualizarDesde(registros);
+            return instruccionEnCurso;
+        }
 
-        if (sinMasInstrucciones) {
-            terminado = true;
-            pcb.setEstado(PCB.Estado.TERMINADO);
+        int direccionActual = registros.getPc();
+        if (direccionActual >= limite || !memoria.isValidAddress(direccionActual)
+                || memoria.isEmpty(direccionActual)) {
+            terminarProceso();
             return null;
         }
 
-        // FETCH: cada posición de memoria guarda una instrucción completa
-        Instruction instruccion = memoria.read(direccionActual);
-
-        // DECODE: en este diseño la "decodificación" ya está hecha al guardar en memoria;
-        // solo se refleja en el registro IR (su binario se calcula bajo demanda para la UI)
-        registros.setIr(instruccion);
+        instruccionEnCurso = memoria.read(direccionActual);
+        direccionInstruccionEnCurso = direccionActual;
+        instruccionIniciadaEsteTick = true;
+        registros.setIr(instruccionEnCurso);
         registros.advancePc(1);
+        finalizarSolicitado = false;
+        pcb.marcarInicio();
+        tiempoCpuSegundos++;
+        pcb.setTiempoCpuSegundos(tiempoCpuSegundos);
 
-        // EXECUTE: se aplica el efecto de la instrucción sobre AC / el registro correspondiente
-        ejecutar(instruccion);
-
-        // El BCP siempre refleja el estado más reciente del proceso
+        try {
+            ejecutar(instruccionEnCurso);
+        } catch (IllegalStateException ex) {
+            pcb.fallar(ex.getMessage());
+            finalizarSolicitado = true;
+        }
+        pcb.setPilaTexto(pila.toString());
         pcb.actualizarDesde(registros);
 
-        if (registros.getPc() >= limite) {
-            terminado = true;
-            pcb.setEstado(PCB.Estado.TERMINADO);
-        } else {
-            pcb.setEstado(PCB.Estado.LISTO);
-        }
+        ticksRestantes = instruccionEnCurso.getPeso() - 1;
+        finalizarSolicitado |= registros.getPc() >= limite;
+        if (ticksRestantes == 0 && finalizarSolicitado) terminarProceso();
+        else if (pcb.getEstado() != PCB.Estado.ERROR) pcb.setEstado(PCB.Estado.EJECUTANDO);
+        return instruccionEnCurso;
+    }
 
-        return instruccion;
+    private void terminarProceso() {
+        terminado = true;
+        if (pcb.getEstado() != PCB.Estado.ERROR) pcb.setEstado(PCB.Estado.TERMINADO);
+        pcb.marcarFin();
     }
 
     private void ejecutar(Instruction instruccion) {
@@ -100,19 +132,96 @@ public class Cpu {
             case MOV:
                 registros.set(reg, instruccion.getOperand());
                 break;
+            case MOVR:
+                registros.set(reg, registros.get(instruccion.getRegisterOperand()));
+                break;
             case LOAD:
                 registros.setAc(registros.get(reg));
                 break;
             case STORE:
                 registros.set(reg, registros.getAc());
                 break;
-            case ADD:
-                registros.setAc(registros.getAc() + registros.get(reg));
+            case ADD: {
+                long resultado = (long) registros.getAc() + registros.get(reg);
+                registros.setAc((int) resultado);
+                actualizarFlags(resultado);
                 break;
-            case SUB:
-                registros.setAc(registros.getAc() - registros.get(reg));
+            }
+            case SUB: {
+                long resultado = (long) registros.getAc() - registros.get(reg);
+                registros.setAc((int) resultado);
+                actualizarFlags(resultado);
+                break;
+            }
+            case INC:
+                if (reg == RegisterName.NONE) {
+                    long resultado = (long) registros.getAc() + 1;
+                    registros.setAc((int) resultado);
+                    actualizarFlags(resultado);
+                } else {
+                    long resultado = (long) registros.get(reg) + 1;
+                    registros.set(reg, (int) resultado);
+                    actualizarFlags(resultado);
+                }
+                break;
+            case DEC:
+                if (reg == RegisterName.NONE) {
+                    long resultado = (long) registros.getAc() - 1;
+                    registros.setAc((int) resultado);
+                    actualizarFlags(resultado);
+                } else {
+                    long resultado = (long) registros.get(reg) - 1;
+                    registros.set(reg, (int) resultado);
+                    actualizarFlags(resultado);
+                }
+                break;
+            case SWAP: {
+                int valor = registros.get(reg);
+                registros.set(reg, registros.get(instruccion.getRegisterOperand()));
+                registros.set(instruccion.getRegisterOperand(), valor);
+                break;
+            }
+            case CMP: {
+                int izquierdo = registros.get(reg);
+                int derecho = registros.get(instruccion.getRegisterOperand());
+                long diferencia = (long) izquierdo - derecho;
+                registros.setZeroFlag(izquierdo == derecho);
+                registros.setOverflowFlag(diferencia < Integer.MIN_VALUE || diferencia > Integer.MAX_VALUE);
+                break;
+            }
+            case JMP:
+                registros.setPc(registros.getPc() + instruccion.getOperand());
+                break;
+            case JE:
+                if (registros.isZeroFlag()) registros.setPc(registros.getPc() + instruccion.getOperand());
+                break;
+            case JNE:
+                if (!registros.isZeroFlag()) registros.setPc(registros.getPc() + instruccion.getOperand());
+                break;
+            case INT:
+                if (instruccion.getOperand() == 0x09) {
+                    if (entradaTeclado == null) throw new IllegalStateException("INT 09H requiere una entrada de teclado.");
+                    registros.set(RegisterName.DX, entradaTeclado);
+                    entradaTeclado = null;
+                } else if (instruccion.getOperand() == 0x20) {
+                    finalizarSolicitado = true;
+                }
+                break;
+            case PARAM:
+                pila.pushAll(instruccion.getParametros());
+                break;
+            case PUSH:
+                pila.push(registros.get(reg));
+                break;
+            case POP:
+                registros.set(reg, pila.pop());
                 break;
         }
+    }
+
+    private void actualizarFlags(long resultado) {
+        registros.setZeroFlag((int) resultado == 0);
+        registros.setOverflowFlag(resultado < Integer.MIN_VALUE || resultado > Integer.MAX_VALUE);
     }
 
     /**
@@ -122,6 +231,7 @@ public class Cpu {
     public int runAll() {
         int contador = 0;
         while (!terminado) {
+            if (contador >= 10000) throw new IllegalStateException("La ejecución alcanzó 10000 segundos simulados; revise si hay un ciclo sin salida.");
             Instruction i = step();
             if (i != null) {
                 contador++;

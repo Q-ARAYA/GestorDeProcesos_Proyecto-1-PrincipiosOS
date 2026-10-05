@@ -1,6 +1,7 @@
 package com.tec.minipc.core;
 
 import com.tec.minipc.model.Instruction;
+import com.tec.minipc.model.Opcode;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -66,7 +67,26 @@ public class Assembler {
             throw new AssemblyException(errores);
         }
 
+        validarDestinosDeSalto(instrucciones);
+
         return instrucciones;
+    }
+
+    /** Desplazamientos relativos a la instrucción siguiente; el destino puede ser el fin del programa. */
+    private static void validarDestinosDeSalto(List<Instruction> instrucciones) throws AssemblyException {
+        List<String> errores = new ArrayList<>();
+        for (int i = 0; i < instrucciones.size(); i++) {
+            Instruction instruccion = instrucciones.get(i);
+            Opcode opcode = instruccion.getOpcode();
+            if (opcode != Opcode.JMP && opcode != Opcode.JE && opcode != Opcode.JNE) continue;
+            int destino = i + 1 + instruccion.getOperand();
+            if (destino < 0 || destino > instrucciones.size()) {
+                errores.add("Salto fuera del programa en instrucción " + (i + 1) + " ("
+                        + instruccion.getSourceLine() + "): destino " + destino
+                        + ", rango permitido 0.." + instrucciones.size() + ".");
+            }
+        }
+        if (!errores.isEmpty()) throw new AssemblyException(errores);
     }
 
     private static void validarExtension(File archivo) throws AssemblyException {

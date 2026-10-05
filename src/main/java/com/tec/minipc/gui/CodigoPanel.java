@@ -29,7 +29,7 @@ public class CodigoPanel extends JPanel {
 
     private final DefaultTableModel modelo;
     private final JTable tabla;
-    private int indiceResaltado = -1;
+    private int indiceResaltado = 0;
 
     public CodigoPanel() {
         setBorder(BorderFactory.createTitledBorder("Programa cargado"));
@@ -55,10 +55,14 @@ public class CodigoPanel extends JPanel {
         modelo.setRowCount(0);
         for (Instruction instruccion : instrucciones) {
             int[] bytes = instruccion.encode();
-            String binario = Instruction.toBinaryByte(bytes[0]) + " " + Instruction.toBinaryByte(bytes[1]);
-            modelo.addRow(new Object[]{instruccion.getSourceLine(), binario});
+            StringBuilder binario = new StringBuilder();
+            for (int i = 0; i < bytes.length; i++) {
+                if (i > 0) binario.append(' ');
+                binario.append(Instruction.toBinaryByte(bytes[i]));
+            }
+            modelo.addRow(new Object[]{instruccion.getSourceLine(), binario.toString()});
         }
-        indiceResaltado = -1;
+        indiceResaltado = 0;
     }
 
     /**

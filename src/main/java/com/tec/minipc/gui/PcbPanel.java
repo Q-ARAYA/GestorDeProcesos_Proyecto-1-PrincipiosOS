@@ -26,6 +26,12 @@ public class PcbPanel extends JPanel {
     private final JLabel lblBase = crearValor();
     private final JLabel lblLimite = crearValor();
     private final JLabel lblInstrucciones = crearValor();
+    private final JLabel lblBcp = crearValor();
+    private final JLabel lblSiguiente = crearValor();
+    private final JLabel lblFlags = crearValor();
+    private final JLabel lblTiempoCpu = crearValor();
+    private final JLabel lblInicio = crearValor();
+    private final JLabel lblFin = crearValor();
     private final JLabel lblAc = crearValor();
     private final JLabel lblAx = crearValor();
     private final JLabel lblBx = crearValor();
@@ -34,7 +40,7 @@ public class PcbPanel extends JPanel {
 
     public PcbPanel() {
         setBorder(BorderFactory.createTitledBorder("BCP (Bloque de Control de Proceso)"));
-        setLayout(new GridLayout(12, 2, 5, 5));
+        setLayout(new GridLayout(18, 2, 4, 3));
 
         agregarFila("PID:", lblPid);
         agregarFila("Programa:", lblPrograma);
@@ -43,6 +49,12 @@ public class PcbPanel extends JPanel {
         agregarFila("Dirección base:", lblBase);
         agregarFila("Dirección límite:", lblLimite);
         agregarFila("Instrucciones:", lblInstrucciones);
+        agregarFila("BCP en kernel:", lblBcp);
+        agregarFila("Siguiente BCP:", lblSiguiente);
+        agregarFila("ZF / OF:", lblFlags);
+        agregarFila("CPU (segundos):", lblTiempoCpu);
+        agregarFila("Hora inicio:", lblInicio);
+        agregarFila("Hora final:", lblFin);
         agregarFila("AC:", lblAc);
         agregarFila("AX:", lblAx);
         agregarFila("BX:", lblBx);
@@ -74,6 +86,12 @@ public class PcbPanel extends JPanel {
         lblBase.setText("-");
         lblLimite.setText("-");
         lblInstrucciones.setText("-");
+        lblBcp.setText("-");
+        lblSiguiente.setText("-");
+        lblFlags.setText("-");
+        lblTiempoCpu.setText("-");
+        lblInicio.setText("-");
+        lblFin.setText("-");
         lblAc.setText("-");
         lblAx.setText("-");
         lblBx.setText("-");
@@ -88,11 +106,17 @@ public class PcbPanel extends JPanel {
     public void actualizar(PCB pcb) {
         lblPid.setText(String.valueOf(pcb.getPid()));
         lblPrograma.setText(pcb.getNombrePrograma());
-        lblEstado.setText(pcb.getEstado().name());
+        lblEstado.setText(pcb.getEstadoDescripcion());
         lblPc.setText(String.valueOf(pcb.getProgramCounter()));
         lblBase.setText(String.valueOf(pcb.getDireccionBase()));
         lblLimite.setText(String.valueOf(pcb.getDireccionLimite()));
         lblInstrucciones.setText(String.valueOf(pcb.getTamanoInstrucciones()));
+        lblBcp.setText(String.valueOf(pcb.getDireccionBcp()));
+        lblSiguiente.setText(pcb.getDireccionSiguienteBcp() < 0 ? "-" : String.valueOf(pcb.getDireccionSiguienteBcp()));
+        lblFlags.setText((pcb.isZeroFlag() ? "1" : "0") + " / " + (pcb.isOverflowFlag() ? "1" : "0"));
+        lblTiempoCpu.setText(String.valueOf(pcb.getTiempoCpuSegundos()));
+        lblInicio.setText(pcb.getHoraInicio());
+        lblFin.setText(pcb.getHoraFin());
         lblAc.setText(String.valueOf(pcb.getAc()));
         lblAx.setText(String.valueOf(pcb.getAx()));
         lblBx.setText(String.valueOf(pcb.getBx()));

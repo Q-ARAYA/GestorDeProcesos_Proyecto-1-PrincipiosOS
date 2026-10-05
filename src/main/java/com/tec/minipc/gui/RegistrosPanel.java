@@ -27,10 +27,11 @@ public class RegistrosPanel extends JPanel {
     private final JLabel lblDx = crearValor();
     private final JLabel lblPc = crearValor();
     private final JLabel lblIr = crearValor();
+    private final JLabel lblFlags = crearValor();
 
     public RegistrosPanel() {
         setBorder(BorderFactory.createTitledBorder("Registros"));
-        setLayout(new GridLayout(7, 2, 5, 5));
+        setLayout(new GridLayout(8, 2, 5, 5));
 
         agregarFila("AC:", lblAc);
         agregarFila("AX:", lblAx);
@@ -39,6 +40,7 @@ public class RegistrosPanel extends JPanel {
         agregarFila("DX:", lblDx);
         agregarFila("PC:", lblPc);
         agregarFila("IR:", lblIr);
+        agregarFila("ZF / OF:", lblFlags);
 
         actualizar(new Registers()); // valores iniciales en 0
     }
@@ -68,5 +70,7 @@ public class RegistrosPanel extends JPanel {
         lblDx.setText(String.valueOf(registros.get(RegisterName.DX)));
         lblPc.setText(String.valueOf(registros.getPc()));
         lblIr.setText(registros.getIr() == null ? "-" : registros.getIr().getSourceLine());
+        lblFlags.setText((registros.isZeroFlag() ? "1" : "0") + " / "
+                + (registros.isOverflowFlag() ? "1" : "0"));
     }
 }

@@ -20,6 +20,8 @@ public class Registers {
     private final Map<RegisterName, Integer> general = new EnumMap<>(RegisterName.class);
     private int pc;
     private Instruction ir;
+    private boolean zeroFlag;
+    private boolean overflowFlag;
 
     public Registers() {
         reset();
@@ -33,6 +35,8 @@ public class Registers {
         ac = 0;
         pc = 0;
         ir = null;
+        zeroFlag = false;
+        overflowFlag = false;
         for (RegisterName r : RegisterName.values()) {
             if (r != RegisterName.NONE) {
                 general.put(r, 0);
@@ -87,5 +91,24 @@ public class Registers {
 
     public void setIr(Instruction ir) {
         this.ir = ir;
+    }
+
+    public boolean isZeroFlag() { return zeroFlag; }
+    public void setZeroFlag(boolean zeroFlag) { this.zeroFlag = zeroFlag; }
+    public boolean isOverflowFlag() { return overflowFlag; }
+    public void setOverflowFlag(boolean overflowFlag) { this.overflowFlag = overflowFlag; }
+
+    /** Restaura una copia completa del estado de otro banco de registros. */
+    public void copyFrom(Registers source) {
+        this.ac = source.ac;
+        this.pc = source.pc;
+        this.ir = source.ir;
+        this.zeroFlag = source.zeroFlag;
+        this.overflowFlag = source.overflowFlag;
+        for (RegisterName r : RegisterName.values()) {
+            if (r != RegisterName.NONE) {
+                this.general.put(r, source.get(r));
+            }
+        }
     }
 }
