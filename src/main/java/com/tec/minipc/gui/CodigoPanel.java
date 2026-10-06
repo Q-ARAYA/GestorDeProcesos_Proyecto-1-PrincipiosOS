@@ -26,13 +26,13 @@ import java.util.List;
 public class CodigoPanel extends JPanel {
 
     private static final String[] COLUMNAS = {"Instrucción", "Binario"};
+    private static final Color COLOR_PC = new Color(173, 224, 246);
 
     private final DefaultTableModel modelo;
     private final JTable tabla;
     private int indiceResaltado = 0;
 
     public CodigoPanel() {
-        setBorder(BorderFactory.createTitledBorder("Programa cargado"));
         setLayout(new BorderLayout());
 
         modelo = new DefaultTableModel(COLUMNAS, 0) {
@@ -78,13 +78,17 @@ public class CodigoPanel extends JPanel {
         }
     }
 
-    /** Resalta en amarillo toda la fila cuyo índice coincide con indiceResaltado. */
+    /** Resalta la instrucción actual con el mismo tono que el PC en memoria. */
     private class ResaltadorInstruccionActual extends DefaultTableCellRenderer {
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value,
                 boolean isSelected, boolean hasFocus, int row, int column) {
             Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-            c.setBackground(row == indiceResaltado ? Color.YELLOW : Color.WHITE);
+            if (!isSelected) {
+                c.setBackground(row == indiceResaltado ? COLOR_PC
+                        : row % 2 == 0 ? Color.WHITE : new Color(242, 250, 255));
+                c.setForeground(new Color(24, 86, 128));
+            }
             return c;
         }
     }

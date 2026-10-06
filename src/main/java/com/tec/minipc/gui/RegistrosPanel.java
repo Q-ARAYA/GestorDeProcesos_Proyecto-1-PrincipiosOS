@@ -12,6 +12,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.awt.Color;
 
 /**
  * Panel que muestra el estado actual de los registros del Mini PC.
@@ -32,8 +33,9 @@ public class RegistrosPanel extends JPanel {
     private final JLabel lblFlags = crearValor();
 
     public RegistrosPanel() {
-        setBorder(BorderFactory.createTitledBorder("Registros"));
+        setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
         setLayout(new GridLayout(10, 2, 5, 5));
+        setBackground(Color.WHITE);
 
         agregarFila("AC:", lblAc);
         agregarFila("AX:", lblAx);
@@ -52,6 +54,13 @@ public class RegistrosPanel extends JPanel {
     private void agregarFila(String etiqueta, JLabel valor) {
         JLabel lbl = new JLabel(etiqueta);
         lbl.setFont(lbl.getFont().deriveFont(Font.BOLD));
+        lbl.setForeground(new Color(43, 119, 159));
+        valor.setOpaque(true);
+        valor.setBackground(new Color(235, 248, 254));
+        valor.setForeground(new Color(24, 86, 128));
+        valor.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(188, 224, 241)),
+                BorderFactory.createEmptyBorder(2, 7, 2, 7)));
         add(lbl);
         add(valor);
     }

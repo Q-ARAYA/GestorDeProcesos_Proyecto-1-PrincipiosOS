@@ -13,7 +13,7 @@ com\tec\minipc\core\SimulatedFileSystem.class
 com\tec\minipc\gui\EstadisticasPanel$1.class
 com\tec\minipc\model\SecondaryStorage.class
 com\tec\minipc\gui\MainFrame.class
-com\tec\minipc\core\SimulatedFileSystem$Archivo.class
+com\tec\minipc\gui\PcbPanel$1.class
 com\tec\minipc\gui\EstadisticasPanel.class
 com\tec\minipc\gui\TrabajosPanel$1.class
 com\tec\minipc\core\Cpu.class
@@ -24,6 +24,7 @@ com\tec\minipc\core\Assembler.class
 com\tec\minipc\core\SimulatorConfig.class
 com\tec\minipc\core\AssemblyException.class
 com\tec\minipc\model\Registers.class
+com\tec\minipc\model\SecondaryStorage$ArchivoSistema.class
 com\tec\minipc\model\Memory.class
 com\tec\minipc\gui\MemoriaPanel.class
 com\tec\minipc\gui\CodigoPanel.class

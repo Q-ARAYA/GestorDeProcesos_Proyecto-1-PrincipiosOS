@@ -6,22 +6,27 @@ import javax.swing.BorderFactory;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
+import javax.swing.JLabel;
+import javax.swing.SwingConstants;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.FlowLayout;
 
 /**
  * Panel que muestra el contenido completo de la memoria como una tabla de
  * dos columnas: posición y valor (igual al formato "Pos / Valor en memoria").
- * Las celdas de la zona de S.O. se marcan en gris claro, y la posición
- * donde apunta el PC actualmente se resalta en amarillo.
+ * Las celdas distinguen kernel, usuario y la dirección activa del PC
+ * mediante tonos de azul y celeste.
  */
 public class MemoriaPanel extends JPanel {
 
     private static final String[] COLUMNAS = {"Pos", "Valor en memoria"};
-    private static final Color COLOR_SO = new Color(225, 225, 225);
+    private static final Color COLOR_SO = new Color(204,204,204);
+    private static final Color COLOR_USUARIO = Color.WHITE;
+    private static final Color COLOR_PC = new Color(173, 224, 246);
 
     private final DefaultTableModel modelo;
     private final JTable tabla;
@@ -29,7 +34,6 @@ public class MemoriaPanel extends JPanel {
     private Memory memoriaActual;
 
     public MemoriaPanel() {
-        setBorder(BorderFactory.createTitledBorder("Memoria (kernel y usuario)"));
         setLayout(new BorderLayout());
 
         modelo = new DefaultTableModel(COLUMNAS, 0) {
@@ -41,8 +45,30 @@ public class MemoriaPanel extends JPanel {
         tabla = new JTable(modelo);
         tabla.setDefaultRenderer(Object.class, new ResaltadorCeldaActual());
         tabla.setRowHeight(20);
+        tabla.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
+        tabla.getColumnModel().getColumn(0).setMinWidth(48);
+        tabla.getColumnModel().getColumn(0).setPreferredWidth(56);
+        tabla.getColumnModel().getColumn(0).setMaxWidth(64);
+        JPanel leyenda = new JPanel(new FlowLayout(FlowLayout.LEFT, 7, 4));
+        leyenda.setBackground(Color.WHITE);
+        leyenda.add(etiquetaLeyenda("Kernel", COLOR_SO, new Color(24, 86, 128)));
+        leyenda.add(etiquetaLeyenda("Usuario", COLOR_USUARIO, new Color(43, 119, 159)));
+        leyenda.add(etiquetaLeyenda("PC actual", COLOR_PC, new Color(13, 59, 96)));
+        add(leyenda, BorderLayout.NORTH);
 
-        add(new JScrollPane(tabla), BorderLayout.CENTER);
+        JScrollPane scroll = new JScrollPane(tabla);
+        scroll.setBorder(BorderFactory.createLineBorder(new Color(188, 224, 241)));
+        add(scroll, BorderLayout.CENTER);
+    }
+
+    private JLabel etiquetaLeyenda(String texto, Color fondo, Color tinta) {
+        JLabel etiqueta = new JLabel("  " + texto + "  ");
+        etiqueta.setOpaque(true);
+        etiqueta.setBackground(fondo);
+        etiqueta.setForeground(tinta);
+        etiqueta.setFont(etiqueta.getFont().deriveFont(java.awt.Font.BOLD, 11f));
+        etiqueta.setBorder(BorderFactory.createLineBorder(new Color(169, 213, 234)));
+        return etiqueta;
     }
 
     /**
@@ -71,7 +97,7 @@ public class MemoriaPanel extends JPanel {
         }
     }
 
-    /** Marca en gris la zona de S.O. y en amarillo la posición del PC actual. */
+    /** Distingue el kernel, el espacio de usuario y la dirección actual del PC. */
     private class ResaltadorCeldaActual extends DefaultTableCellRenderer {
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value,
@@ -79,12 +105,21 @@ public class MemoriaPanel extends JPanel {
             Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             int direccionFila = (int) table.getValueAt(row, 0);
 
-            if (direccionFila == direccionResaltada) {
-                c.setBackground(Color.YELLOW);
-            } else if (memoriaActual != null && memoriaActual.isOsAddress(direccionFila)) {
-                c.setBackground(COLOR_SO);
-            } else {
-                c.setBackground(Color.WHITE);
+            if (!isSelected) {
+                if (direccionFila == direccionResaltada) {
+                    c.setBackground(COLOR_PC);
+                } else if (memoriaActual != null && memoriaActual.isOsAddress(direccionFila)) {
+                    c.setBackground(COLOR_SO);
+                } else {
+                    c.setBackground(row % 2 == 0 ? COLOR_USUARIO : new Color(242, 250, 255));
+                }
+                c.setForeground(column == 0 ? new Color(31, 112, 173) : new Color(24, 86, 128));
+            }
+            if (c instanceof JLabel etiqueta) {
+                etiqueta.setHorizontalAlignment(column == 0 ? SwingConstants.CENTER : SwingConstants.LEFT);
+                etiqueta.setFont(column == 0
+                        ? new java.awt.Font(java.awt.Font.MONOSPACED, java.awt.Font.BOLD, 11)
+                        : table.getFont());
             }
             return c;
         }

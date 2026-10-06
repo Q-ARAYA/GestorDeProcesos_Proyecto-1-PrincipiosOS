@@ -10,6 +10,7 @@ import com.tec.minipc.model.Memory;
 import com.tec.minipc.model.Registers;
 import com.tec.minipc.model.SecondaryStorage;
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.io.File;
@@ -53,7 +54,9 @@ public class MainFrame extends JFrame {
     public MainFrame() {
         super("Mini PC - Gestor de procesos FCFS");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(1250, 760);
+        Rectangle pantalla = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
+        setMinimumSize(new Dimension(Math.min(1100, pantalla.width), Math.min(700, pantalla.height)));
+        setSize(Math.min(1480, pantalla.width), Math.min(900, pantalla.height));
         setLocationRelativeTo(null);
         cargarConfiguracionInicial();
         armarLayout();
@@ -62,47 +65,191 @@ public class MainFrame extends JFrame {
     }
 
     private void armarLayout() {
-        JPanel controles = new JPanel(new GridLayout(2, 1));
-        JPanel configuracion = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        UIManager.put("TabbedPane.selected", new Color(190, 228, 246));
+        UIManager.put("TabbedPane.background", new Color(229, 245, 252));
+        UIManager.put("TabbedPane.foreground", new Color(18, 76, 125));
+        Color fondo = new Color(229, 245, 252);
+        Color tinta = new Color(13, 59, 96);
+        getContentPane().setBackground(fondo);
+
+        JPanel encabezado = new JPanel(new BorderLayout(0, 6));
+        encabezado.setBackground(new Color(242, 250, 255));
+        encabezado.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(188, 224, 241)),
+                new EmptyBorder(6, 11, 6, 11)));
+        JPanel marca = new JPanel(new GridLayout(2, 1, 0, 1));
+        marca.setOpaque(false);
+        JLabel titulo = new JLabel("Mini PC");
+        titulo.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        titulo.setForeground(tinta);
+        JLabel subtitulo = new JLabel("Simulador de sistema operativo · FCFS");
+        subtitulo.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        subtitulo.setForeground(new Color(43, 119, 159));
+        marca.add(titulo);
+        marca.add(subtitulo);
+
+        JPanel configuracion = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        configuracion.setOpaque(false);
+        btnCargar.setText("Cargar .asm");
+        btnGuardarConfig.setText("Guardar");
         configuracion.add(btnCargar);
-        configuracion.add(new JLabel("Memoria total:")); configuracion.add(spTotal);
-        configuracion.add(new JLabel("Kernel (% de memoria):")); configuracion.add(spKernel);
-        configuracion.add(new JLabel("Disco:")); configuracion.add(spDisco);
-        configuracion.add(new JLabel("Memoria virtual (páginas):")); configuracion.add(spVirtual);
+        agregarConfiguracion(configuracion, "RAM", spTotal, "Memoria principal total");
+        agregarConfiguracion(configuracion, "Kernel %", spKernel, "Porcentaje de memoria reservado al kernel");
+        agregarConfiguracion(configuracion, "Disco", spDisco, "Capacidad del disco secundario");
+        agregarConfiguracion(configuracion, "Virtual", spVirtual, "Páginas de memoria virtual disponibles");
         configuracion.add(btnGuardarConfig);
-        JPanel ejecucion = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        ejecucion.add(btnSiguiente); ejecucion.add(btnEjecutarTodo);
-        ejecucion.add(btnSuspender); ejecucion.add(btnReanudar); ejecucion.add(btnReiniciar);
-        controles.add(configuracion);
-        controles.add(ejecucion);
 
-        JPanel derecha = new JPanel(new BorderLayout(4, 4));
-        JPanel datos = new JPanel();
-        datos.setLayout(new BoxLayout(datos, BoxLayout.Y_AXIS));
-        datos.add(registrosPanel); datos.add(pcbPanel);
-        JTabbedPane monitoreo = new JTabbedPane();
-        monitoreo.addTab("CPU y BCP", new JScrollPane(datos));
-        monitoreo.addTab("Lista de trabajos", trabajosPanel);
-        monitoreo.addTab("Estadísticas", estadisticasPanel);
-        monitoreo.addTab("Seguridad", seguridadPanel);
-        derecha.add(monitoreo, BorderLayout.CENTER);
-        derecha.setPreferredSize(new Dimension(460, 420));
+        JPanel franjaSuperior = new JPanel(new BorderLayout(12, 0));
+        franjaSuperior.setOpaque(false);
+        franjaSuperior.add(marca, BorderLayout.WEST);
+        franjaSuperior.add(configuracion, BorderLayout.CENTER);
+        JPanel ejecucion = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        ejecucion.setOpaque(false);
+        ejecucion.add(btnSiguiente);
+        ejecucion.add(btnEjecutarTodo);
+        ejecucion.add(btnSuspender);
+        ejecucion.add(btnReanudar);
+        ejecucion.add(btnReiniciar);
+        encabezado.add(franjaSuperior, BorderLayout.CENTER);
+        encabezado.add(ejecucion, BorderLayout.SOUTH);
 
-        codigoPanel.setPreferredSize(new Dimension(300, 420));
-        JPanel centro = new JPanel(new BorderLayout(4, 4));
-        centro.add(memoriaPanel, BorderLayout.CENTER);
-        dispositivosPanel.setPreferredSize(new Dimension(500, 190));
-        JTabbedPane recursos = new JTabbedPane();
-        recursos.addTab("Dispositivos E/S", dispositivosPanel);
-        recursos.addTab("Disco y memoria virtual", almacenamientoPanel);
-        recursos.setPreferredSize(new Dimension(500, 220));
-        centro.add(recursos, BorderLayout.SOUTH);
-        setLayout(new BorderLayout(4, 4));
-        add(controles, BorderLayout.NORTH);
-        add(codigoPanel, BorderLayout.WEST);
-        add(derecha, BorderLayout.EAST);
-        add(centro, BorderLayout.CENTER);
-        add(lblMensaje, BorderLayout.SOUTH);
+        JPanel columnaRecursos = new JPanel(new BorderLayout());
+        columnaRecursos.setMinimumSize(new Dimension(0, 0));
+        JSplitPane divisionRecursos = crearDivision(JSplitPane.VERTICAL_SPLIT,
+                seccion("MEMORIA PRINCIPAL", memoriaPanel, new Color(25, 112, 173)),
+                seccion("PROGRAMA .ASM", codigoPanel, new Color(31, 147, 190)), 0.53);
+        columnaRecursos.add(divisionRecursos, BorderLayout.CENTER);
+
+        JPanel columnaSistema = new JPanel(new BorderLayout());
+        columnaSistema.setMinimumSize(new Dimension(0, 0));
+        JSplitPane divisionSistema = crearDivision(JSplitPane.VERTICAL_SPLIT,
+                seccion("KERNEL · BLOQUES DE CONTROL (BCP)", pcbPanel, new Color(16, 82, 136)),
+                seccion("CPU · REGISTROS", new JScrollPane(registrosPanel), new Color(42, 131, 177)), 0.65);
+        columnaSistema.add(divisionSistema, BorderLayout.CENTER);
+
+        JSplitPane tablero = crearDivision(JSplitPane.HORIZONTAL_SPLIT,
+                columnaRecursos, columnaSistema, 0.55);
+        JTabbedPane secundarios = new JTabbedPane();
+        secundarios.addTab("Dispositivos E/S", dispositivosPanel);
+        secundarios.addTab("Lista de trabajos", trabajosPanel);
+        secundarios.addTab("Disco y memoria virtual", almacenamientoPanel);
+        secundarios.addTab("Estadísticas", estadisticasPanel);
+        secundarios.addTab("Seguridad", seguridadPanel);
+        JSplitPane espacioTrabajo = crearDivision(JSplitPane.VERTICAL_SPLIT, tablero, secundarios, 0.73);
+        espacioTrabajo.setResizeWeight(0.73);
+
+        JPanel barraEstado = new JPanel(new BorderLayout());
+        barraEstado.setBackground(new Color(242, 250, 255));
+        barraEstado.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(188, 224, 241)),
+                new EmptyBorder(5, 12, 5, 12)));
+        lblMensaje.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblMensaje.setForeground(new Color(24, 86, 128));
+        barraEstado.add(lblMensaje, BorderLayout.CENTER);
+
+        setLayout(new BorderLayout(0, 5));
+        ((JPanel) getContentPane()).setBorder(new EmptyBorder(6, 7, 0, 7));
+        add(encabezado, BorderLayout.NORTH);
+        add(espacioTrabajo, BorderLayout.CENTER);
+        add(barraEstado, BorderLayout.SOUTH);
+        estilizarComponentes(getContentPane());
+        Color azul = new Color(31, 112, 173);
+        Color celeste = new Color(54, 151, 193);
+        estilizarBoton(btnCargar, azul);
+        estilizarBoton(btnSiguiente, azul);
+        estilizarBoton(btnEjecutarTodo, new Color(24, 126, 177));
+        estilizarBoton(btnSuspender, celeste);
+        estilizarBoton(btnReanudar, new Color(38, 137, 180));
+        estilizarBoton(btnReiniciar, new Color(18, 76, 125));
+        estilizarBoton(btnGuardarConfig, new Color(69, 159, 196));
+        SwingUtilities.invokeLater(() -> {
+            divisionRecursos.setDividerLocation(0.53);
+            divisionSistema.setDividerLocation(0.65);
+            tablero.setDividerLocation(0.55);
+            espacioTrabajo.setDividerLocation(0.74);
+        });
+    }
+
+    private void agregarConfiguracion(JPanel panel, String texto, JSpinner spinner, String ayuda) {
+        JLabel etiqueta = new JLabel(texto);
+        etiqueta.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        etiqueta.setForeground(new Color(24, 86, 128));
+        etiqueta.setToolTipText(ayuda);
+        spinner.setPreferredSize(new Dimension(texto.equals("Kernel %") ? 62 : 68, 27));
+        spinner.setToolTipText(ayuda);
+        panel.add(etiqueta);
+        panel.add(spinner);
+    }
+
+    private JSplitPane crearDivision(int orientacion, Component superior, Component inferior, double proporcion) {
+        JSplitPane division = new JSplitPane(orientacion, superior, inferior);
+        division.setResizeWeight(proporcion);
+        division.setContinuousLayout(true);
+        division.setBorder(BorderFactory.createEmptyBorder());
+        division.setDividerSize(8);
+        division.setOneTouchExpandable(true);
+        return division;
+    }
+
+    private JPanel seccion(String titulo, Component contenido, Color color) {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(Color.WHITE);
+        panel.setMinimumSize(new Dimension(0, 0));
+        JLabel encabezado = new JLabel("  " + titulo);
+        encabezado.setOpaque(true);
+        encabezado.setBackground(color);
+        encabezado.setForeground(Color.WHITE);
+        encabezado.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        encabezado.setBorder(new EmptyBorder(7, 5, 7, 5));
+        panel.add(encabezado, BorderLayout.NORTH);
+        if (contenido instanceof JComponent jComponent) {
+            jComponent.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+        }
+        panel.add(contenido, BorderLayout.CENTER);
+        panel.setBorder(BorderFactory.createLineBorder(new Color(185, 221, 239)));
+        return panel;
+    }
+
+    private void estilizarBoton(JButton boton, Color color) {
+        boton.setBackground(color);
+        boton.setForeground(Color.WHITE);
+        boton.setOpaque(true);
+        boton.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(18, 76, 125)), new EmptyBorder(5, 9, 5, 9)));
+    }
+
+    private void estilizarComponentes(Component componente) {
+        if (componente instanceof JTable tabla) {
+            tabla.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            tabla.setRowHeight(24);
+            tabla.setShowVerticalLines(false);
+            tabla.setGridColor(new Color(205, 231, 244));
+            tabla.setSelectionBackground(new Color(190, 228, 246));
+            tabla.setSelectionForeground(new Color(13, 59, 96));
+            tabla.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+            tabla.getTableHeader().setBackground(new Color(218, 241, 251));
+            tabla.getTableHeader().setForeground(new Color(18, 76, 125));
+        } else if (componente instanceof JButton boton) {
+            boton.setBackground(new Color(54, 151, 193));
+            boton.setForeground(Color.WHITE);
+            boton.setOpaque(true);
+            boton.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            boton.setFocusPainted(false);
+            boton.setMargin(new Insets(7, 11, 7, 11));
+        } else if (componente instanceof JLabel etiqueta && !etiqueta.isOpaque()) {
+            etiqueta.setForeground(new Color(24, 86, 128));
+        } else if (componente instanceof JSpinner spinner) {
+            spinner.setBackground(Color.WHITE);
+            spinner.setForeground(new Color(18, 76, 125));
+        } else if (componente instanceof JTabbedPane pestanas) {
+            pestanas.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            pestanas.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
+            pestanas.setBackground(new Color(229, 245, 252));
+            pestanas.setForeground(new Color(18, 76, 125));
+        }
+        if (componente instanceof Container contenedor) {
+            for (Component hijo : contenedor.getComponents()) estilizarComponentes(hijo);
+        }
     }
 
     private void registrarAcciones() {
@@ -188,6 +335,7 @@ public class MainFrame extends JFrame {
 
     private void onSiguiente() {
         if (gestor == null || !gestor.puedeAvanzar()) return;
+        int entradasEsperandoAntes = gestor.getCantidadEsperandoEntrada();
         ProcessManager.Proceso anterior = gestor.getActual();
         if (anterior == null) anterior = gestor.getProcesos().stream()
                 .filter(p -> p.getPcb().getEstado() == PCB.Estado.LISTO).findFirst().orElse(null);
@@ -204,10 +352,13 @@ public class MainFrame extends JFrame {
         else if (gestor.hayEsperandoEntrada()) lblMensaje.setText("Proceso detenido en INT 09H; escriba un valor en el teclado simulado.");
         if (!gestor.hayPendientes()) lblMensaje.setText("Todos los procesos finalizaron.");
         actualizarBotones();
+        solicitarEntradasSiNecesario(entradasEsperandoAntes);
+        avisarSiLaCpuQuedoSinTrabajo();
     }
 
     private void onEjecutarTodo() {
         if (gestor == null || !gestor.puedeAvanzar()) return;
+        int entradasEsperandoAntes = gestor.getCantidadEsperandoEntrada();
         int pasos;
         try {
             pasos = gestor.runAll();
@@ -230,6 +381,63 @@ public class MainFrame extends JFrame {
             lblMensaje.setText("Ejecución automática: " + pasos + " segundos de CPU procesados.");
         }
         actualizarBotones();
+        solicitarEntradasSiNecesario(entradasEsperandoAntes);
+        avisarSiLaCpuQuedoSinTrabajo();
+    }
+
+    /** Abre un cuadro solo cuando aparecen entradas nuevas o la CPU queda detenida por ellas. */
+    private void solicitarEntradasSiNecesario(int entradasEsperandoAntes) {
+        if (gestor == null) return;
+        int actuales = gestor.getCantidadEsperandoEntrada();
+        int nuevas = Math.max(0, actuales - entradasEsperandoAntes);
+        int solicitudes = Math.max(nuevas, gestor.puedeAvanzar() ? 0 : actuales);
+        for (int i = 0; i < solicitudes; i++) {
+            if (!solicitarEntradaTeclado()) return;
+        }
+    }
+
+    private boolean solicitarEntradaTeclado() {
+        ProcessManager.Proceso esperando = gestor.getProcesos().stream()
+                .filter(p -> p.getPcb().getEstado() == PCB.Estado.ESPERA
+                        && p.getPcb().getEstadoDescripcion().contains("Teclado (INT 09H)"))
+                .findFirst().orElse(null);
+        if (esperando == null) return false;
+
+        String titulo = "Entrada requerida · teclado simulado";
+        while (true) {
+            String texto = JOptionPane.showInputDialog(this,
+                    "El proceso PID " + esperando.getPcb().getPid() + " ("
+                    + esperando.getPcb().getNombrePrograma() + ") llegó a INT 09H y espera una entrada.\n"
+                    + "Escriba un número entero entre 0 y 255 para continuar.",
+                    titulo, JOptionPane.QUESTION_MESSAGE);
+            if (texto == null) {
+                lblMensaje.setText("Entrada pendiente. Escríbala en la pestaña Dispositivos E/S cuando quiera continuar.");
+                return false;
+            }
+            try {
+                int valor = Integer.parseInt(texto.trim());
+                if (valor < 0 || valor > 255) throw new NumberFormatException();
+                gestor.proveerEntrada(valor);
+                refrescarTodo(false);
+                actualizarDispositivos();
+                lblMensaje.setText("Entrada " + valor + " enviada al PID " + esperando.getPcb().getPid()
+                        + ". Pulse Siguiente o Ejecutar todo para continuar.");
+                actualizarBotones();
+                return true;
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(this,
+                        "Ingrese un número entero entre 0 y 255.", titulo, JOptionPane.WARNING_MESSAGE);
+            }
+        }
+    }
+
+    private void avisarSiLaCpuQuedoSinTrabajo() {
+        if (gestor == null || !gestor.hayPendientes() || gestor.puedeAvanzar()
+                || gestor.hayEsperandoEntrada() || !gestor.haySuspendidos()) return;
+        JOptionPane.showMessageDialog(this,
+                "No quedan procesos listos para usar la CPU. Hay " + gestor.getCantidadSuspendidos()
+                + " proceso(s) suspendido(s). Use «Reanudar suspendido» para seguir.",
+                "Simulación en pausa", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private ProcessManager.Proceso ultimoProceso() {
@@ -241,7 +449,7 @@ public class MainFrame extends JFrame {
         gestor = null; memoria = null; almacenamiento = null; procesoMostrado = null;
         codigoPanel.cargar(new ArrayList<>());
         registrosPanel.actualizar(new Registers());
-        pcbPanel.limpiar();
+        pcbPanel.actualizar(List.of(), null);
         trabajosPanel.actualizar(new ArrayList<>());
         estadisticasPanel.limpiar();
         seguridadPanel.actualizar(List.of(), List.of(), null);
@@ -276,7 +484,6 @@ public class MainFrame extends JFrame {
             if (mostrarCodigo) codigoPanel.cargar(procesoMostrado.getInstrucciones());
             Registers r = procesoMostrado.getRegistros();
             registrosPanel.actualizar(r);
-            pcbPanel.actualizar(procesoMostrado.getPcb());
             memoriaPanel.actualizar(memoria, r.getPc());
             int base = procesoMostrado.getBase();
             int fin = base + procesoMostrado.getInstrucciones().size();
@@ -286,6 +493,7 @@ public class MainFrame extends JFrame {
             memoriaPanel.actualizar(memoria, -1);
         }
         almacenamientoPanel.actualizar(almacenamiento, gestor.getSistemaArchivos());
+        pcbPanel.actualizar(gestor.getProcesos(), memoria);
         trabajosPanel.actualizar(gestor.getProcesos());
         estadisticasPanel.actualizar(gestor.getProcesos());
         seguridadPanel.actualizar(gestor.getProcesos(), gestor.getEventos(),
@@ -336,6 +544,7 @@ public class MainFrame extends JFrame {
         actualizarDispositivos();
         lblMensaje.setText("PID " + suspendido.getPcb().getPid() + " suspendido; su contexto y memoria se conservaron.");
         actualizarBotones();
+        avisarSiLaCpuQuedoSinTrabajo();
     }
 
     private void onReanudar() {
@@ -349,6 +558,10 @@ public class MainFrame extends JFrame {
         actualizarDispositivos();
         lblMensaje.setText("PID " + reanudado.getPcb().getPid() + " volvió al final de la cola FCFS.");
         actualizarBotones();
+        JOptionPane.showMessageDialog(this,
+                "El PID " + reanudado.getPcb().getPid() + " volvió al final de la cola FCFS.\n"
+                + "Cuando le corresponda usar la CPU, podrá continuar desde su instrucción guardada.",
+                "Proceso reanudado", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void cargarConfiguracionInicial() {
