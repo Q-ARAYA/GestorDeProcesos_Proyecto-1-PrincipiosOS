@@ -8,6 +8,9 @@ import com.tec.minipc.model.RegisterName;
 import com.tec.minipc.model.Registers;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Bloque de Control de Proceso (BCP / PCB).
@@ -18,7 +21,7 @@ import java.time.format.DateTimeFormatter;
  * la interfaz sin exponer el objeto Registers real del CPU.
  */
 public class PCB {
-    private static final DateTimeFormatter FORMATO_HORA = DateTimeFormatter.ofPattern("HH:mm:ss");
+    private static final DateTimeFormatter FORMATO_HORA = DateTimeFormatter.ofPattern("HH:mm");
 
     /** Estados posibles de un proceso dentro del simulador. */
     public enum Estado {
@@ -57,6 +60,7 @@ public class PCB {
     private LocalDateTime horaFin;
     private int direccionBcp = -1;
     private int direccionSiguienteBcp = -1;
+    private List<String> archivosAbiertos = new ArrayList<>();
 
     public PCB(int pid, String nombrePrograma, int direccionBase, int direccionLimite, int tamanoInstrucciones) {
         this.pid = pid;
@@ -166,6 +170,8 @@ public class PCB {
     public void setTiempoCpuSegundos(long tiempoCpuSegundos) { this.tiempoCpuSegundos = tiempoCpuSegundos; }
     public String getHoraInicio() { return horaInicio == null ? "-" : horaInicio.format(FORMATO_HORA); }
     public String getHoraFin() { return horaFin == null ? "-" : horaFin.format(FORMATO_HORA); }
+    public List<String> getArchivosAbiertos() { return Collections.unmodifiableList(archivosAbiertos); }
+    public void setArchivosAbiertos(List<String> archivos) { archivosAbiertos = new ArrayList<>(archivos); }
 
     public int getDireccionBcp() { return direccionBcp; }
 

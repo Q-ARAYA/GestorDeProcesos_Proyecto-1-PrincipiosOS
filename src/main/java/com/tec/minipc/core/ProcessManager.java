@@ -43,6 +43,7 @@ public class ProcessManager {
     }
 
     private final Memory memoria;
+    private final SimulatedFileSystem sistemaArchivos;
     private final List<Proceso> procesos = new ArrayList<>();
     private final Deque<Proceso> listos = new ArrayDeque<>();
     private final Deque<Proceso> esperaMemoria = new ArrayDeque<>();
@@ -53,7 +54,12 @@ public class ProcessManager {
     private Proceso actual;
     private int siguientesPid = 1;
 
-    public ProcessManager(Memory memoria) { this.memoria = memoria; }
+    public ProcessManager(Memory memoria) { this(memoria, null); }
+
+    public ProcessManager(Memory memoria, com.tec.minipc.model.SecondaryStorage almacenamiento) {
+        this.memoria = memoria;
+        this.sistemaArchivos = almacenamiento == null ? null : new SimulatedFileSystem(almacenamiento);
+    }
 
     /** Registra el trabajo y su BCP; si no hay hueco, queda en ESPERA hasta liberar memoria. */
     public Proceso admitir(String nombre, List<Instruction> instrucciones) {
@@ -107,7 +113,7 @@ public class ProcessManager {
         proceso.pcb.asignarRegionMemoria(base);
         proceso.registros.reset();
         proceso.registros.setPc(base);
-        proceso.cpu = new Cpu(memoria, proceso.registros, proceso.pcb, proceso.pila);
+        proceso.cpu = new Cpu(memoria, proceso.registros, proceso.pcb, proceso.pila, sistemaArchivos);
         memoria.actualizarBcp(proceso.pcb);
         return true;
     }
@@ -162,6 +168,11 @@ public class ProcessManager {
             if (!actual.cpu.getMensajeError().isEmpty()) {
                 eventos.add(actual.pcb.getNombrePrograma() + " terminó con error: " + actual.cpu.getMensajeError());
             }
+            if (sistemaArchivos != null) {
+                sistemaArchivos.cerrarProceso(actual.pcb.getPid());
+                actual.pcb.setArchivosAbiertos(sistemaArchivos.getArchivosAbiertos(actual.pcb.getPid()));
+                memoria.actualizarBcp(actual.pcb);
+            }
             memoria.release(actual.getBase(), actual.getTamano());
             actual = null;
             admitirEnEspera();
@@ -186,6 +197,7 @@ public class ProcessManager {
 
     public List<String> getSalidaPantalla() { return Collections.unmodifiableList(salidaPantalla); }
     public List<String> getEventos() { return Collections.unmodifiableList(eventos); }
+    public SimulatedFileSystem getSistemaArchivos() { return sistemaArchivos; }
     public boolean hayEsperandoEntrada() { return !esperaEntrada.isEmpty(); }
     public int getCantidadEsperandoEntrada() { return esperaEntrada.size(); }
     public boolean puedeAvanzar() { return actual != null || !listos.isEmpty() || !esperaMemoria.isEmpty(); }

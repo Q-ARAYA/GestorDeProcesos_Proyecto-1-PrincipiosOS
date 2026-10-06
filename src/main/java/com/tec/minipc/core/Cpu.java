@@ -22,6 +22,7 @@ public class Cpu {
     private final Registers registros;
     private final PCB pcb;
     private final ProcessStack pila;
+    private final SimulatedFileSystem sistemaArchivos;
     private boolean terminado;
     private Integer entradaTeclado;
     private Instruction instruccionEnCurso;
@@ -32,14 +33,19 @@ public class Cpu {
     private long tiempoCpuSegundos;
 
     public Cpu(Memory memoria, Registers registros, PCB pcb) {
-        this(memoria, registros, pcb, new ProcessStack());
+        this(memoria, registros, pcb, new ProcessStack(), null);
     }
 
     public Cpu(Memory memoria, Registers registros, PCB pcb, ProcessStack pila) {
+        this(memoria, registros, pcb, pila, null);
+    }
+
+    public Cpu(Memory memoria, Registers registros, PCB pcb, ProcessStack pila, SimulatedFileSystem sistemaArchivos) {
         this.memoria = memoria;
         this.registros = registros;
         this.pcb = pcb;
         this.pila = pila;
+        this.sistemaArchivos = sistemaArchivos;
         this.terminado = false;
         pcb.setEstado(PCB.Estado.LISTO);
     }
@@ -205,6 +211,12 @@ public class Cpu {
                     entradaTeclado = null;
                 } else if (instruccion.getOperand() == 0x20) {
                     finalizarSolicitado = true;
+                } else if (instruccion.getOperand() == 0x21) {
+                    if (sistemaArchivos == null) throw new IllegalStateException("INT 21H requiere el disco simulado.");
+                    int resultado = sistemaArchivos.invocar(pcb.getPid(), registros.get(RegisterName.AH),
+                            registros.get(RegisterName.DX), registros.get(RegisterName.AL));
+                    if (registros.get(RegisterName.AH) == 0x4D) registros.set(RegisterName.AL, resultado);
+                    pcb.setArchivosAbiertos(sistemaArchivos.getArchivosAbiertos(pcb.getPid()));
                 }
                 break;
             case PARAM:

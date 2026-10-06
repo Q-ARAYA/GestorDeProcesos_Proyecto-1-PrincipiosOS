@@ -16,7 +16,9 @@ public enum RegisterName {
     AX(0b0001),
     BX(0b0010),
     CX(0b0011),
-    DX(0b0100);
+    DX(0b0100),
+    AH(0b0101),
+    AL(0b0110);
 
     private final int code;
 

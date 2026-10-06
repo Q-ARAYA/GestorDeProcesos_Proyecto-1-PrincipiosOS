@@ -37,10 +37,11 @@ public class PcbPanel extends JPanel {
     private final JLabel lblBx = crearValor();
     private final JLabel lblCx = crearValor();
     private final JLabel lblDx = crearValor();
+    private final JLabel lblArchivosAbiertos = crearValor();
 
     public PcbPanel() {
         setBorder(BorderFactory.createTitledBorder("BCP (Bloque de Control de Proceso)"));
-        setLayout(new GridLayout(18, 2, 4, 3));
+        setLayout(new GridLayout(19, 2, 4, 3));
 
         agregarFila("PID:", lblPid);
         agregarFila("Programa:", lblPrograma);
@@ -60,6 +61,7 @@ public class PcbPanel extends JPanel {
         agregarFila("BX:", lblBx);
         agregarFila("CX:", lblCx);
         agregarFila("DX:", lblDx);
+        agregarFila("Archivos abiertos:", lblArchivosAbiertos);
 
         limpiar();
     }
@@ -97,6 +99,7 @@ public class PcbPanel extends JPanel {
         lblBx.setText("-");
         lblCx.setText("-");
         lblDx.setText("-");
+        lblArchivosAbiertos.setText("-");
     }
 
     /**
@@ -122,5 +125,6 @@ public class PcbPanel extends JPanel {
         lblBx.setText(String.valueOf(pcb.getBx()));
         lblCx.setText(String.valueOf(pcb.getCx()));
         lblDx.setText(String.valueOf(pcb.getDx()));
+        lblArchivosAbiertos.setText(pcb.getArchivosAbiertos().isEmpty() ? "-" : String.join(", ", pcb.getArchivosAbiertos()));
     }
 }

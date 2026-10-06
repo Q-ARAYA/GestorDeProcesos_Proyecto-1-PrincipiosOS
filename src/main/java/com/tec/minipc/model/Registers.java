@@ -57,6 +57,8 @@ public class Registers {
      * @return el valor actual de ese registro
      */
     public int get(RegisterName reg) {
+        if (reg == RegisterName.AH) return (get(RegisterName.AX) >>> 8) & 0xFF;
+        if (reg == RegisterName.AL) return get(RegisterName.AX) & 0xFF;
         Integer v = general.get(reg);
         return (v == null) ? 0 : v;
     }
@@ -66,6 +68,16 @@ public class Registers {
      * @param value el nuevo valor
      */
     public void set(RegisterName reg, int value) {
+        if (reg == RegisterName.AH) {
+            int ax = get(RegisterName.AX) & 0xFFFF;
+            general.put(RegisterName.AX, (ax & 0x00FF) | ((value & 0xFF) << 8));
+            return;
+        }
+        if (reg == RegisterName.AL) {
+            int ax = get(RegisterName.AX) & 0xFFFF;
+            general.put(RegisterName.AX, (ax & 0xFF00) | (value & 0xFF));
+            return;
+        }
         general.put(reg, value);
     }
 

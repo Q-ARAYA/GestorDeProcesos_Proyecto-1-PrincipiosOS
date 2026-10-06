@@ -22,6 +22,8 @@ public class RegistrosPanel extends JPanel {
 
     private final JLabel lblAc = crearValor();
     private final JLabel lblAx = crearValor();
+    private final JLabel lblAh = crearValor();
+    private final JLabel lblAl = crearValor();
     private final JLabel lblBx = crearValor();
     private final JLabel lblCx = crearValor();
     private final JLabel lblDx = crearValor();
@@ -31,10 +33,12 @@ public class RegistrosPanel extends JPanel {
 
     public RegistrosPanel() {
         setBorder(BorderFactory.createTitledBorder("Registros"));
-        setLayout(new GridLayout(8, 2, 5, 5));
+        setLayout(new GridLayout(10, 2, 5, 5));
 
         agregarFila("AC:", lblAc);
         agregarFila("AX:", lblAx);
+        agregarFila("AH:", lblAh);
+        agregarFila("AL:", lblAl);
         agregarFila("BX:", lblBx);
         agregarFila("CX:", lblCx);
         agregarFila("DX:", lblDx);
@@ -65,6 +69,8 @@ public class RegistrosPanel extends JPanel {
     public void actualizar(Registers registros) {
         lblAc.setText(String.valueOf(registros.getAc()));
         lblAx.setText(String.valueOf(registros.get(RegisterName.AX)));
+        lblAh.setText(String.valueOf(registros.get(RegisterName.AH)));
+        lblAl.setText(String.valueOf(registros.get(RegisterName.AL)));
         lblBx.setText(String.valueOf(registros.get(RegisterName.BX)));
         lblCx.setText(String.valueOf(registros.get(RegisterName.CX)));
         lblDx.setText(String.valueOf(registros.get(RegisterName.DX)));

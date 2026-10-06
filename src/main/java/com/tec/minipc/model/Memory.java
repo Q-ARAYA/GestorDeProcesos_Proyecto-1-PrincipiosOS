@@ -135,6 +135,7 @@ public class Memory {
         celdas[base + 4] = "Base=" + pcb.getDireccionBase() + " Limite=" + pcb.getDireccionLimite() + " Tamaño=" + pcb.getTamanoInstrucciones();
         celdas[base + 5] = "Pila=" + pcb.getPilaTexto() + " CPU(s)=" + pcb.getTiempoCpuSegundos()
                 + " Inicio=" + pcb.getHoraInicio() + " Fin=" + pcb.getHoraFin()
+                + " Abiertos=" + pcb.getArchivosAbiertos()
                 + " Siguiente BCP=" + pcb.getDireccionSiguienteBcp();
     }
 

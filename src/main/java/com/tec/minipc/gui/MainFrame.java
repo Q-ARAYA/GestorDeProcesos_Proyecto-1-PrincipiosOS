@@ -4,9 +4,11 @@ import com.tec.minipc.core.Assembler;
 import com.tec.minipc.core.AssemblyException;
 import com.tec.minipc.core.PCB;
 import com.tec.minipc.core.ProcessManager;
+import com.tec.minipc.core.SimulatorConfig;
 import com.tec.minipc.model.Instruction;
 import com.tec.minipc.model.Memory;
 import com.tec.minipc.model.Registers;
+import com.tec.minipc.model.SecondaryStorage;
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
@@ -18,8 +20,11 @@ import java.util.List;
 /** Ventana principal del simulador y coordinación de la ejecución FCFS. */
 public class MainFrame extends JFrame {
     private final JButton btnCargar = new JButton("Cargar .asm...");
-    private final JSpinner spTotal = new JSpinner(new SpinnerNumberModel(256, Memory.TAMANO_MINIMO, 256, 1));
+    private final JSpinner spTotal = new JSpinner(new SpinnerNumberModel(256, Memory.TAMANO_MINIMO, 4096, 1));
     private final JSpinner spKernel = new JSpinner(new SpinnerNumberModel(25, 25, 80, 5));
+    private final JSpinner spDisco = new JSpinner(new SpinnerNumberModel(SecondaryStorage.TAMANO_POR_DEFECTO, 128, 16384, 1));
+    private final JSpinner spVirtual = new JSpinner(new SpinnerNumberModel(SecondaryStorage.MEMORIA_VIRTUAL_POR_DEFECTO, 0, 16374, 1));
+    private final JButton btnGuardarConfig = new JButton("Guardar configuración");
     private final JButton btnSiguiente = new JButton("Siguiente (1 s)");
     private final JButton btnEjecutarTodo = new JButton("Ejecutar todo");
     private final JButton btnReiniciar = new JButton("Reiniciar simulación");
@@ -29,12 +34,18 @@ public class MainFrame extends JFrame {
     private final PcbPanel pcbPanel = new PcbPanel();
     private final MemoriaPanel memoriaPanel = new MemoriaPanel();
     private final TrabajosPanel trabajosPanel = new TrabajosPanel();
+    private final EstadisticasPanel estadisticasPanel = new EstadisticasPanel();
+    private final SeguridadPanel seguridadPanel = new SeguridadPanel();
     private final DispositivosPanel dispositivosPanel = new DispositivosPanel(this::onEnviarEntrada);
+    private final AlmacenamientoPanel almacenamientoPanel = new AlmacenamientoPanel();
 
     private Memory memoria;
+    private SecondaryStorage almacenamiento;
     private ProcessManager gestor;
     private int tamanoConfigurado;
     private int kernelPorcentajeConfigurado;
+    private int discoConfigurado;
+    private int memoriaVirtualConfigurada;
     private ProcessManager.Proceso procesoMostrado;
 
     public MainFrame() {
@@ -42,31 +53,47 @@ public class MainFrame extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1250, 760);
         setLocationRelativeTo(null);
+        cargarConfiguracionInicial();
         armarLayout();
         registrarAcciones();
         actualizarBotones();
     }
 
     private void armarLayout() {
-        JPanel controles = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        controles.add(btnCargar);
-        controles.add(new JLabel("Memoria total:")); controles.add(spTotal);
-        controles.add(new JLabel("Kernel (% de memoria):")); controles.add(spKernel);
-        controles.add(btnSiguiente); controles.add(btnEjecutarTodo); controles.add(btnReiniciar);
+        JPanel controles = new JPanel(new GridLayout(2, 1));
+        JPanel configuracion = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        configuracion.add(btnCargar);
+        configuracion.add(new JLabel("Memoria total:")); configuracion.add(spTotal);
+        configuracion.add(new JLabel("Kernel (% de memoria):")); configuracion.add(spKernel);
+        configuracion.add(new JLabel("Disco:")); configuracion.add(spDisco);
+        configuracion.add(new JLabel("Memoria virtual (páginas):")); configuracion.add(spVirtual);
+        configuracion.add(btnGuardarConfig);
+        JPanel ejecucion = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        ejecucion.add(btnSiguiente); ejecucion.add(btnEjecutarTodo); ejecucion.add(btnReiniciar);
+        controles.add(configuracion);
+        controles.add(ejecucion);
 
         JPanel derecha = new JPanel(new BorderLayout(4, 4));
         JPanel datos = new JPanel();
         datos.setLayout(new BoxLayout(datos, BoxLayout.Y_AXIS));
         datos.add(registrosPanel); datos.add(pcbPanel);
-        derecha.add(datos, BorderLayout.CENTER);
-        derecha.add(trabajosPanel, BorderLayout.SOUTH);
+        JTabbedPane monitoreo = new JTabbedPane();
+        monitoreo.addTab("CPU y BCP", new JScrollPane(datos));
+        monitoreo.addTab("Lista de trabajos", trabajosPanel);
+        monitoreo.addTab("Estadísticas", estadisticasPanel);
+        monitoreo.addTab("Seguridad", seguridadPanel);
+        derecha.add(monitoreo, BorderLayout.CENTER);
         derecha.setPreferredSize(new Dimension(460, 420));
 
         codigoPanel.setPreferredSize(new Dimension(300, 420));
         JPanel centro = new JPanel(new BorderLayout(4, 4));
         centro.add(memoriaPanel, BorderLayout.CENTER);
         dispositivosPanel.setPreferredSize(new Dimension(500, 190));
-        centro.add(dispositivosPanel, BorderLayout.SOUTH);
+        JTabbedPane recursos = new JTabbedPane();
+        recursos.addTab("Dispositivos E/S", dispositivosPanel);
+        recursos.addTab("Disco y memoria virtual", almacenamientoPanel);
+        recursos.setPreferredSize(new Dimension(500, 220));
+        centro.add(recursos, BorderLayout.SOUTH);
         setLayout(new BorderLayout(4, 4));
         add(controles, BorderLayout.NORTH);
         add(codigoPanel, BorderLayout.WEST);
@@ -80,6 +107,7 @@ public class MainFrame extends JFrame {
         btnSiguiente.addActionListener(e -> onSiguiente());
         btnEjecutarTodo.addActionListener(e -> onEjecutarTodo());
         btnReiniciar.addActionListener(e -> onReiniciar());
+        btnGuardarConfig.addActionListener(e -> guardarConfiguracionDesdeInterfaz());
     }
 
     private void onCargar() {
@@ -93,8 +121,11 @@ public class MainFrame extends JFrame {
     private void cargarProgramas(File[] archivos) {
         int total = (Integer) spTotal.getValue();
         int porcentajeKernel = (Integer) spKernel.getValue();
-        if (gestor != null && (total != tamanoConfigurado || porcentajeKernel != kernelPorcentajeConfigurado)) {
-            mostrarError("La configuración de memoria no puede cambiar mientras hay una simulación activa. Reinicie primero.");
+        int tamanoDisco = (Integer) spDisco.getValue();
+        int tamanoVirtual = (Integer) spVirtual.getValue();
+        if (gestor != null && (total != tamanoConfigurado || porcentajeKernel != kernelPorcentajeConfigurado
+                || tamanoDisco != discoConfigurado || tamanoVirtual != memoriaVirtualConfigurada)) {
+            mostrarError("La configuración no puede cambiar mientras hay una simulación activa. Reinicie primero.");
             return;
         }
         List<File> validos = new ArrayList<>();
@@ -116,15 +147,23 @@ public class MainFrame extends JFrame {
         if (gestor == null) {
             try {
                 memoria = new Memory(total, calcularTamanoKernel(total, porcentajeKernel));
-                gestor = new ProcessManager(memoria);
+                almacenamiento = new SecondaryStorage(tamanoDisco, tamanoVirtual);
+                gestor = new ProcessManager(memoria, almacenamiento);
                 tamanoConfigurado = total;
                 kernelPorcentajeConfigurado = porcentajeKernel;
+                discoConfigurado = tamanoDisco;
+                memoriaVirtualConfigurada = tamanoVirtual;
+                guardarConfiguracionSilenciosa(total, porcentajeKernel, tamanoDisco, tamanoVirtual);
             } catch (IllegalArgumentException ex) { mostrarError(ex.getMessage()); return; }
         }
         int admitidos = 0;
         for (int i = 0; i < validos.size(); i++) {
             try {
-                gestor.admitir(validos.get(i).getName(), programas.get(i));
+                if (!almacenamiento.puedeGuardar(programas.get(i))) {
+                    throw new IllegalStateException("No hay espacio disponible en el disco secundario para guardar el programa.");
+                }
+                ProcessManager.Proceso proceso = gestor.admitir(validos.get(i).getName(), programas.get(i));
+                almacenamiento.guardar(proceso.getPcb().getPid(), validos.get(i).getName(), programas.get(i));
                 admitidos++;
             } catch (IllegalStateException ex) {
                 errores.append(validos.get(i).getName()).append(": ").append(ex.getMessage()).append("\n\n");
@@ -192,18 +231,30 @@ public class MainFrame extends JFrame {
     }
 
     private void onReiniciar() {
-        gestor = null; memoria = null; procesoMostrado = null;
+        gestor = null; memoria = null; almacenamiento = null; procesoMostrado = null;
         codigoPanel.cargar(new ArrayList<>());
         registrosPanel.actualizar(new Registers());
         pcbPanel.limpiar();
         trabajosPanel.actualizar(new ArrayList<>());
+        estadisticasPanel.limpiar();
+        seguridadPanel.actualizar(List.of(), List.of(), null);
         dispositivosPanel.limpiar();
         try {
             int total = (Integer) spTotal.getValue();
             int porcentajeKernel = (Integer) spKernel.getValue();
+            int tamanoDisco = (Integer) spDisco.getValue();
+            int tamanoVirtual = (Integer) spVirtual.getValue();
             memoria = new Memory(total, calcularTamanoKernel(total, porcentajeKernel));
+            almacenamiento = new SecondaryStorage(tamanoDisco, tamanoVirtual);
+            tamanoConfigurado = total;
+            kernelPorcentajeConfigurado = porcentajeKernel;
+            discoConfigurado = tamanoDisco;
+            memoriaVirtualConfigurada = tamanoVirtual;
+            almacenamientoPanel.actualizar(almacenamiento);
+            guardarConfiguracionSilenciosa(total, porcentajeKernel, tamanoDisco, tamanoVirtual);
             memoriaPanel.actualizar(memoria, -1);
         } catch (IllegalArgumentException ex) {
+            almacenamientoPanel.actualizar(null);
             memoriaPanel.actualizar(new Memory(256, 64), -1);
         }
         lblMensaje.setText("Simulación reiniciada. Cargue programas .asm.");
@@ -227,7 +278,11 @@ public class MainFrame extends JFrame {
         } else {
             memoriaPanel.actualizar(memoria, -1);
         }
+        almacenamientoPanel.actualizar(almacenamiento, gestor.getSistemaArchivos());
         trabajosPanel.actualizar(gestor.getProcesos());
+        estadisticasPanel.actualizar(gestor.getProcesos());
+        seguridadPanel.actualizar(gestor.getProcesos(), gestor.getEventos(),
+                gestor.getSistemaArchivos() == null ? null : gestor.getSistemaArchivos().getEventos());
     }
 
     private void mostrarError(String mensaje) {
@@ -261,6 +316,43 @@ public class MainFrame extends JFrame {
 
     private int calcularTamanoKernel(int memoriaTotal, int porcentaje) {
         return (int) Math.ceil(memoriaTotal * porcentaje / 100.0);
+    }
+
+    private void cargarConfiguracionInicial() {
+        try {
+            SimulatorConfig config = SimulatorConfig.cargar();
+            spTotal.setValue(config.getMemoriaPrincipal());
+            spKernel.setValue(config.getKernelPorcentaje());
+            spDisco.setValue(config.getDiscoSecundario());
+            spVirtual.setValue(config.getMemoriaVirtual());
+        } catch (IOException | IllegalArgumentException ex) {
+            lblMensaje.setText("Configuración inválida: " + ex.getMessage() + ". Se usarán los valores predeterminados.");
+        }
+    }
+
+    private void guardarConfiguracionDesdeInterfaz() {
+        int total = (Integer) spTotal.getValue();
+        int kernel = (Integer) spKernel.getValue();
+        int disco = (Integer) spDisco.getValue();
+        int virtual = (Integer) spVirtual.getValue();
+        try {
+            SimulatorConfig config = SimulatorConfig.cargar();
+            config.setValores(total, kernel, disco, virtual);
+            config.guardar();
+            lblMensaje.setText("Configuración guardada en simulador.properties.");
+        } catch (IOException | IllegalArgumentException ex) {
+            mostrarError("No se pudo guardar la configuración: " + ex.getMessage());
+        }
+    }
+
+    private void guardarConfiguracionSilenciosa(int total, int kernel, int disco, int virtual) {
+        try {
+            SimulatorConfig config = SimulatorConfig.cargar();
+            config.setValores(total, kernel, disco, virtual);
+            config.guardar();
+        } catch (IOException | IllegalArgumentException ex) {
+            lblMensaje.setText("Simulación iniciada; no se pudo persistir la configuración: " + ex.getMessage());
+        }
     }
 
     private void actualizarBotones() {

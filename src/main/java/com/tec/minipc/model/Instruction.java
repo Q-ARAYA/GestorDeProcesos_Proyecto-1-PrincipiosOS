@@ -146,7 +146,7 @@ public class Instruction {
                 }
                 try { value = Integer.parseInt(first.substring(0, first.length() - 1), 16); }
                 catch (NumberFormatException ex) { throw error(lineNumber, "código de interrupción inválido: " + first); }
-                if (value != 0x09 && value != 0x10 && value != 0x20) {
+                if (value != 0x09 && value != 0x10 && value != 0x20 && value != 0x21) {
                     throw error(lineNumber, "interrupción no implementada: INT " + first.toUpperCase());
                 }
                 opcode = Opcode.INT;
@@ -288,6 +288,7 @@ public class Instruction {
             case CMP: case JMP: case JE: case JNE: return 2;
             case PARAM: return 3;
             case INT:
+                if (operand == 0x21) return 5;
                 if (operand == 0x20 || operand == 0x10 || operand == 0x09) return 2;
                 return 1;
             default: return 1;
