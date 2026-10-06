@@ -18,6 +18,7 @@ public class Registers {
 
     private int ac;
     private final Map<RegisterName, Integer> general = new EnumMap<>(RegisterName.class);
+    private final Map<RegisterName, String> textos = new EnumMap<>(RegisterName.class);
     private int pc;
     private Instruction ir;
     private boolean zeroFlag;
@@ -35,6 +36,7 @@ public class Registers {
         ac = 0;
         pc = 0;
         ir = null;
+        textos.clear();
         zeroFlag = false;
         overflowFlag = false;
         for (RegisterName r : RegisterName.values()) {
@@ -78,7 +80,20 @@ public class Registers {
             general.put(RegisterName.AX, (ax & 0xFF00) | (value & 0xFF));
             return;
         }
+        if (reg == RegisterName.DX) textos.remove(RegisterName.DX);
         general.put(reg, value);
+    }
+
+    public String getTexto(RegisterName reg) { return textos.get(reg); }
+
+    public void setTexto(RegisterName reg, String texto) {
+        if (reg != RegisterName.DX) throw new IllegalArgumentException("Solo DX admite texto en este simulador.");
+        if (texto == null) {
+            textos.remove(reg);
+        } else {
+            textos.put(reg, texto);
+            general.put(reg, texto.hashCode() & 0xFFFF);
+        }
     }
 
     public int getPc() {
@@ -112,6 +127,7 @@ public class Registers {
 
     /** Restaura una copia completa del estado de otro banco de registros. */
     public void copyFrom(Registers source) {
+        String textoDx = source.getTexto(RegisterName.DX);
         this.ac = source.ac;
         this.pc = source.pc;
         this.ir = source.ir;
@@ -122,5 +138,7 @@ public class Registers {
                 this.general.put(r, source.get(r));
             }
         }
+        textos.clear();
+        if (textoDx != null) setTexto(RegisterName.DX, textoDx);
     }
 }

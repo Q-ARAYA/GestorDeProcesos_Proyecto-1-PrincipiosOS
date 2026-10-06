@@ -132,6 +132,7 @@ public class Memory {
         celdas[base + 2] = "PC=" + pcb.getProgramCounter() + " AC=" + pcb.getAc() + " AX=" + pcb.getAx() + " BX=" + pcb.getBx();
         celdas[base + 3] = "CX=" + pcb.getCx() + " DX=" + pcb.getDx() + " IR=" + pcb.getIrTexto()
                 + " ZF=" + pcb.isZeroFlag() + " OF=" + pcb.isOverflowFlag();
+        if (pcb.getDxTexto() != null) celdas[base + 3] += " DX(texto)=\"" + pcb.getDxTexto() + "\"";
         celdas[base + 4] = "Base=" + pcb.getDireccionBase() + " Limite=" + pcb.getDireccionLimite() + " Tamaño=" + pcb.getTamanoInstrucciones();
         celdas[base + 5] = "Pila=" + pcb.getPilaTexto() + " CPU(s)=" + pcb.getTiempoCpuSegundos()
                 + " Inicio=" + pcb.getHoraInicio() + " Fin=" + pcb.getHoraFin()

@@ -32,7 +32,7 @@ public final class SeguridadPanel extends JPanel {
                 .append("• CPU y memoria validan límites; un salto fuera del programa finaliza ese proceso.\n")
                 .append("• La pila por proceso tiene capacidad 5; desbordamiento y subdesbordamiento reportan error.\n")
                 .append("• El teclado limita entradas a 0–255 y el disco aplica límites de capacidad.\n")
-                .append("• INT 21H solo acepta funciones implementadas y valida ID, descriptor y espacio.\n\n")
+                .append("• INT 21H restringe los nombres y valida función, archivo abierto y espacio disponible.\n\n")
                 .append("INCIDENTES DE PROCESOS\n");
         boolean alguno = false;
         for (ProcessManager.Proceso proceso : procesos) {

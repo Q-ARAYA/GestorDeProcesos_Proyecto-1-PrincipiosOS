@@ -1,8 +1,8 @@
 ; Ejemplo de llamadas a archivos del sistema simulado.
-; DX usa un ID numerico de 0 a 255; AH selecciona la funcion y AL transporta bytes.
-; Se crea archivo_007.dat, se escriben H e i, luego se abre y se lee el primer byte.
+; DX contiene el nombre de archivo entre comillas; AH selecciona la funcion y AL transporta bytes.
+; Se crea notas.txt, se escriben H e i, luego se abre y se lee el primer byte.
 
-MOV DX, 7
+MOV DX, "notas.txt"
 MOV AH, 60       ; 3CH: crear archivo
 INT 21H
 

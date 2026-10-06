@@ -52,7 +52,7 @@ public final class SimulatorConfig {
             throw new IllegalArgumentException("El kernel debe ocupar entre 25% y 80% de la memoria.");
         if (discoSecundario < 128 || discoSecundario > 16384)
             throw new IllegalArgumentException("El disco secundario debe estar entre 128 y 16384 celdas.");
-        if (memoriaVirtual < 0 || memoriaVirtual > discoSecundario - SecondaryStorage.MAX_ARCHIVOS * SecondaryStorage.CELDAS_POR_INDICE)
+        if (memoriaVirtual < 0 || memoriaVirtual > discoSecundario - SecondaryStorage.CELDAS_INDICE)
             throw new IllegalArgumentException("La memoria virtual excede el espacio disponible en el disco.");
     }
 

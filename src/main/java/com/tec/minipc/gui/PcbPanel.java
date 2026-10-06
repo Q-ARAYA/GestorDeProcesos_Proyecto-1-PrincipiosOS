@@ -124,7 +124,7 @@ public class PcbPanel extends JPanel {
         lblAx.setText(String.valueOf(pcb.getAx()));
         lblBx.setText(String.valueOf(pcb.getBx()));
         lblCx.setText(String.valueOf(pcb.getCx()));
-        lblDx.setText(String.valueOf(pcb.getDx()));
+        lblDx.setText(pcb.getDxTexto() == null ? String.valueOf(pcb.getDx()) : "\"" + pcb.getDxTexto() + "\"");
         lblArchivosAbiertos.setText(pcb.getArchivosAbiertos().isEmpty() ? "-" : String.join(", ", pcb.getArchivosAbiertos()));
     }
 }

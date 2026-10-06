@@ -23,10 +23,12 @@ public class MainFrame extends JFrame {
     private final JSpinner spTotal = new JSpinner(new SpinnerNumberModel(256, Memory.TAMANO_MINIMO, 4096, 1));
     private final JSpinner spKernel = new JSpinner(new SpinnerNumberModel(25, 25, 80, 5));
     private final JSpinner spDisco = new JSpinner(new SpinnerNumberModel(SecondaryStorage.TAMANO_POR_DEFECTO, 128, 16384, 1));
-    private final JSpinner spVirtual = new JSpinner(new SpinnerNumberModel(SecondaryStorage.MEMORIA_VIRTUAL_POR_DEFECTO, 0, 16374, 1));
+    private final JSpinner spVirtual = new JSpinner(new SpinnerNumberModel(SecondaryStorage.MEMORIA_VIRTUAL_POR_DEFECTO, 0, 16354, 1));
     private final JButton btnGuardarConfig = new JButton("Guardar configuración");
     private final JButton btnSiguiente = new JButton("Siguiente (1 s)");
     private final JButton btnEjecutarTodo = new JButton("Ejecutar todo");
+    private final JButton btnSuspender = new JButton("Suspender actual");
+    private final JButton btnReanudar = new JButton("Reanudar suspendido");
     private final JButton btnReiniciar = new JButton("Reiniciar simulación");
     private final JLabel lblMensaje = new JLabel("Cargue hasta cinco programas .asm.");
     private final CodigoPanel codigoPanel = new CodigoPanel();
@@ -69,7 +71,8 @@ public class MainFrame extends JFrame {
         configuracion.add(new JLabel("Memoria virtual (páginas):")); configuracion.add(spVirtual);
         configuracion.add(btnGuardarConfig);
         JPanel ejecucion = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        ejecucion.add(btnSiguiente); ejecucion.add(btnEjecutarTodo); ejecucion.add(btnReiniciar);
+        ejecucion.add(btnSiguiente); ejecucion.add(btnEjecutarTodo);
+        ejecucion.add(btnSuspender); ejecucion.add(btnReanudar); ejecucion.add(btnReiniciar);
         controles.add(configuracion);
         controles.add(ejecucion);
 
@@ -106,6 +109,8 @@ public class MainFrame extends JFrame {
         btnCargar.addActionListener(e -> onCargar());
         btnSiguiente.addActionListener(e -> onSiguiente());
         btnEjecutarTodo.addActionListener(e -> onEjecutarTodo());
+        btnSuspender.addActionListener(e -> onSuspender());
+        btnReanudar.addActionListener(e -> onReanudar());
         btnReiniciar.addActionListener(e -> onReiniciar());
         btnGuardarConfig.addActionListener(e -> guardarConfiguracionDesdeInterfaz());
     }
@@ -162,8 +167,7 @@ public class MainFrame extends JFrame {
                 if (!almacenamiento.puedeGuardar(programas.get(i))) {
                     throw new IllegalStateException("No hay espacio disponible en el disco secundario para guardar el programa.");
                 }
-                ProcessManager.Proceso proceso = gestor.admitir(validos.get(i).getName(), programas.get(i));
-                almacenamiento.guardar(proceso.getPcb().getPid(), validos.get(i).getName(), programas.get(i));
+                gestor.admitir(validos.get(i).getName(), programas.get(i));
                 admitidos++;
             } catch (IllegalStateException ex) {
                 errores.append(validos.get(i).getName()).append(": ").append(ex.getMessage()).append("\n\n");
@@ -183,7 +187,7 @@ public class MainFrame extends JFrame {
     }
 
     private void onSiguiente() {
-        if (gestor == null || !gestor.hayPendientes()) return;
+        if (gestor == null || !gestor.puedeAvanzar()) return;
         ProcessManager.Proceso anterior = gestor.getActual();
         if (anterior == null) anterior = gestor.getProcesos().stream()
                 .filter(p -> p.getPcb().getEstado() == PCB.Estado.LISTO).findFirst().orElse(null);
@@ -203,7 +207,7 @@ public class MainFrame extends JFrame {
     }
 
     private void onEjecutarTodo() {
-        if (gestor == null || !gestor.hayPendientes()) return;
+        if (gestor == null || !gestor.puedeAvanzar()) return;
         int pasos;
         try {
             pasos = gestor.runAll();
@@ -217,7 +221,10 @@ public class MainFrame extends JFrame {
         procesoMostrado = ultimoProceso();
         refrescarTodo(true);
         actualizarDispositivos();
-        if (gestor.hayEsperandoEntrada()) {
+        if (gestor.haySuspendidos()) {
+            lblMensaje.setText("Ejecución pausada. Hay " + gestor.getCantidadSuspendidos()
+                    + " proceso(s) suspendido(s); reanude uno para continuar.");
+        } else if (gestor.hayEsperandoEntrada()) {
             lblMensaje.setText("Ejecución pausada: " + gestor.getCantidadEsperandoEntrada() + " proceso(s) esperan INT 09H.");
         } else {
             lblMensaje.setText("Ejecución automática: " + pasos + " segundos de CPU procesados.");
@@ -318,6 +325,32 @@ public class MainFrame extends JFrame {
         return (int) Math.ceil(memoriaTotal * porcentaje / 100.0);
     }
 
+    private void onSuspender() {
+        if (gestor == null) return;
+        ProcessManager.Proceso suspendido = gestor.suspenderActual();
+        if (suspendido == null) {
+            lblMensaje.setText("No hay un proceso ejecutándose para suspender.");
+            return;
+        }
+        refrescarTodo(true);
+        actualizarDispositivos();
+        lblMensaje.setText("PID " + suspendido.getPcb().getPid() + " suspendido; su contexto y memoria se conservaron.");
+        actualizarBotones();
+    }
+
+    private void onReanudar() {
+        if (gestor == null) return;
+        ProcessManager.Proceso reanudado = gestor.reanudarSiguiente();
+        if (reanudado == null) {
+            lblMensaje.setText("No hay procesos suspendidos para reanudar.");
+            return;
+        }
+        refrescarTodo(true);
+        actualizarDispositivos();
+        lblMensaje.setText("PID " + reanudado.getPcb().getPid() + " volvió al final de la cola FCFS.");
+        actualizarBotones();
+    }
+
     private void cargarConfiguracionInicial() {
         try {
             SimulatorConfig config = SimulatorConfig.cargar();
@@ -359,6 +392,8 @@ public class MainFrame extends JFrame {
         boolean pendientes = gestor != null && gestor.puedeAvanzar();
         btnSiguiente.setEnabled(pendientes);
         btnEjecutarTodo.setEnabled(pendientes);
+        btnSuspender.setEnabled(gestor != null && gestor.getActual() != null);
+        btnReanudar.setEnabled(gestor != null && gestor.haySuspendidos());
         btnReiniciar.setEnabled(gestor != null);
     }
 }

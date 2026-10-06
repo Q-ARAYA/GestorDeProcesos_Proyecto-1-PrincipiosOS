@@ -17,25 +17,32 @@ public class Instruction {
     private final int operand;
     private final List<Integer> parametros;
     private final String sourceLine;
+    private final String stringOperand;
 
     /** Constructor conservado para instrucciones con un único registro/operando. */
     public Instruction(Opcode opcode, RegisterName register, int operand, String sourceLine) {
-        this(opcode, register, null, operand, sourceLine, Collections.emptyList());
+        this(opcode, register, null, operand, sourceLine, Collections.emptyList(), null);
     }
 
     private Instruction(Opcode opcode, RegisterName register, RegisterName registerOperand,
             int operand, String sourceLine) {
-        this(opcode, register, registerOperand, operand, sourceLine, Collections.emptyList());
+        this(opcode, register, registerOperand, operand, sourceLine, Collections.emptyList(), null);
     }
 
     private Instruction(Opcode opcode, RegisterName register, RegisterName registerOperand,
             int operand, String sourceLine, List<Integer> parametros) {
+        this(opcode, register, registerOperand, operand, sourceLine, parametros, null);
+    }
+
+    private Instruction(Opcode opcode, RegisterName register, RegisterName registerOperand,
+            int operand, String sourceLine, List<Integer> parametros, String stringOperand) {
         this.opcode = opcode;
         this.register = register;
         this.registerOperand = registerOperand;
         this.operand = operand;
         this.parametros = Collections.unmodifiableList(new ArrayList<>(parametros));
         this.sourceLine = sourceLine;
+        this.stringOperand = stringOperand;
         validar();
     }
 
@@ -49,6 +56,9 @@ public class Instruction {
         }
         if (opcode == Opcode.PARAM && (parametros.isEmpty() || parametros.size() > 3)) {
             throw new IllegalArgumentException("PARAM acepta entre uno y tres valores.");
+        }
+        if (stringOperand != null && (opcode != Opcode.MOV || register != RegisterName.DX)) {
+            throw new IllegalArgumentException("Los nombres de archivo solo se cargan en DX.");
         }
     }
 
@@ -72,6 +82,7 @@ public class Instruction {
         RegisterName reg2 = null;
         int value = 0;
         Opcode opcode;
+        String stringOperand = null;
 
         switch (mnemonic) {
             case "MOV":
@@ -79,7 +90,18 @@ public class Instruction {
                     throw error(lineNumber, "MOV requiere destino y fuente, ej. MOV AX, 5 o MOV AX, BX");
                 }
                 reg = parseRegister(first, lineNumber);
-                if (second.matches("[+-]?\\d+")) {
+                if (second.startsWith("\"") || second.endsWith("\"")) {
+                    if (!second.startsWith("\"") || !second.endsWith("\"")) {
+                        throw error(lineNumber, "el nombre de archivo debe ir entre comillas");
+                    }
+                    if (reg != RegisterName.DX) throw error(lineNumber, "el nombre de archivo debe cargarse en DX");
+                    stringOperand = second.substring(1, second.length() - 1);
+                    if (!stringOperand.matches("[A-Za-z0-9_.-]{1,64}")) {
+                        throw error(lineNumber, "nombre inválido; use 1–64 letras, números, punto, guion o guion bajo");
+                    }
+                    opcode = Opcode.MOV;
+                    return new Instruction(opcode, reg, null, 0, line, Collections.emptyList(), stringOperand);
+                } else if (second.matches("[+-]?\\d+")) {
                     opcode = Opcode.MOV;
                     try { value = Integer.parseInt(second); }
                     catch (NumberFormatException ex) { throw error(lineNumber, "valor inmediato fuera de rango: " + second); }
@@ -155,7 +177,7 @@ public class Instruction {
             default:
                 throw error(lineNumber, "instrucción no reconocida: " + mnemonic);
         }
-        return new Instruction(opcode, reg, reg2, value, line);
+        return new Instruction(opcode, reg, reg2, value, line, Collections.emptyList(), stringOperand);
     }
 
     private static void requireOneRegister(String mnemonic, String first, String second, int lineNumber) {
@@ -180,6 +202,14 @@ public class Instruction {
 
     /** Byte 0 contiene opcode/registro; byte 1 contiene inmediato o segundo registro. */
     public int[] encode() {
+        if (stringOperand != null) {
+            byte[] texto = stringOperand.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            int[] bytes = new int[texto.length + 2];
+            bytes[0] = (Opcode.MOV.getCode() << 4) | 0x0F;
+            bytes[1] = texto.length;
+            for (int i = 0; i < texto.length; i++) bytes[i + 2] = texto[i] & 0xFF;
+            return bytes;
+        }
         if (opcode == Opcode.PARAM) {
             int[] bytes = new int[parametros.size() + 1];
             bytes[0] = (opcode.getCode() << 4) | parametros.size();
@@ -207,6 +237,16 @@ public class Instruction {
         int byte1 = bytes[1] & 0xFF;
         int opcodeBits = (byte0 >> 4) & 0x0F;
         int selector = byte0 & 0x0F;
+        if (opcodeBits == Opcode.MOV.getCode() && selector == 0x0F) {
+            int longitud = byte1 & 0xFF;
+            if (longitud == 0 || bytes.length < longitud + 2) throw new IllegalArgumentException("Literal de archivo incompleto.");
+            byte[] texto = new byte[longitud];
+            for (int i = 0; i < longitud; i++) texto[i] = (byte) bytes[i + 2];
+            String nombre = new String(texto, java.nio.charset.StandardCharsets.UTF_8);
+            if (!nombre.matches("[A-Za-z0-9_.-]{1,64}")) throw new IllegalArgumentException("Literal de archivo inválido.");
+            return new Instruction(Opcode.MOV, RegisterName.DX, null, 0,
+                    "MOV DX, \"" + nombre + "\"", Collections.emptyList(), nombre);
+        }
         Opcode opcode;
         if (opcodeBits == Opcode.JMP.getCode()) {
             if (selector == 0) opcode = Opcode.JMP;
@@ -278,6 +318,7 @@ public class Instruction {
     public int getOperand() { return operand; }
     public List<Integer> getParametros() { return parametros; }
     public String getSourceLine() { return sourceLine; }
+    public String getStringOperand() { return stringOperand; }
 
     /** Costo de la instrucción en segundos simulados según la tabla del proyecto. */
     public int getPeso() {

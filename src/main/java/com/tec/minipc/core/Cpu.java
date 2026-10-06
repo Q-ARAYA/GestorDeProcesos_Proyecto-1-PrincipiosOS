@@ -136,7 +136,8 @@ public class Cpu {
         RegisterName reg = instruccion.getRegister();
         switch (instruccion.getOpcode()) {
             case MOV:
-                registros.set(reg, instruccion.getOperand());
+                if (instruccion.getStringOperand() != null) registros.setTexto(reg, instruccion.getStringOperand());
+                else registros.set(reg, instruccion.getOperand());
                 break;
             case MOVR:
                 registros.set(reg, registros.get(instruccion.getRegisterOperand()));
@@ -214,7 +215,7 @@ public class Cpu {
                 } else if (instruccion.getOperand() == 0x21) {
                     if (sistemaArchivos == null) throw new IllegalStateException("INT 21H requiere el disco simulado.");
                     int resultado = sistemaArchivos.invocar(pcb.getPid(), registros.get(RegisterName.AH),
-                            registros.get(RegisterName.DX), registros.get(RegisterName.AL));
+                            registros.getTexto(RegisterName.DX), registros.get(RegisterName.AL));
                     if (registros.get(RegisterName.AH) == 0x4D) registros.set(RegisterName.AL, resultado);
                     pcb.setArchivosAbiertos(sistemaArchivos.getArchivosAbiertos(pcb.getPid()));
                 }

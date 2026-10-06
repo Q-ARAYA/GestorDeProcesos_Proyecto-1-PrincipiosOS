@@ -5,6 +5,7 @@ import com.tec.minipc.model.Memory;
 import com.tec.minipc.model.Opcode;
 import com.tec.minipc.model.RegisterName;
 import com.tec.minipc.model.Registers;
+import com.tec.minipc.model.SecondaryStorage;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -43,11 +44,13 @@ public class ProcessManager {
     }
 
     private final Memory memoria;
+    private final SecondaryStorage almacenamientoSecundario;
     private final SimulatedFileSystem sistemaArchivos;
     private final List<Proceso> procesos = new ArrayList<>();
     private final Deque<Proceso> listos = new ArrayDeque<>();
     private final Deque<Proceso> esperaMemoria = new ArrayDeque<>();
     private final Deque<Proceso> esperaEntrada = new ArrayDeque<>();
+    private final Deque<Proceso> suspendidos = new ArrayDeque<>();
     private final Deque<Integer> entradasTeclado = new ArrayDeque<>();
     private final List<String> salidaPantalla = new ArrayList<>();
     private final List<String> eventos = new ArrayList<>();
@@ -56,8 +59,9 @@ public class ProcessManager {
 
     public ProcessManager(Memory memoria) { this(memoria, null); }
 
-    public ProcessManager(Memory memoria, com.tec.minipc.model.SecondaryStorage almacenamiento) {
+    public ProcessManager(Memory memoria, SecondaryStorage almacenamiento) {
         this.memoria = memoria;
+        this.almacenamientoSecundario = almacenamiento;
         this.sistemaArchivos = almacenamiento == null ? null : new SimulatedFileSystem(almacenamiento);
     }
 
@@ -71,8 +75,12 @@ public class ProcessManager {
             throw new IllegalStateException("El programa " + nombre + " excede la capacidad total de memoria de usuario ("
                     + capacidadUsuario + " celdas).");
         }
+        if (almacenamientoSecundario != null && !almacenamientoSecundario.puedeGuardar(instrucciones)) {
+            throw new IllegalStateException("No hay espacio suficiente en el disco o en la memoria virtual para " + nombre + ".");
+        }
 
         PCB pcb = new PCB(siguientesPid++, nombre, -1, -1, instrucciones.size());
+        if (almacenamientoSecundario != null) almacenamientoSecundario.guardar(pcb.getPid(), nombre, instrucciones);
         Proceso proceso = new Proceso(pcb, instrucciones);
         memoria.guardarBcp(pcb);
         if (!procesos.isEmpty()) {
@@ -109,11 +117,14 @@ public class ProcessManager {
     private boolean cargarEnMemoria(Proceso proceso) {
         int base = buscarHueco(proceso.getTamano());
         if (base < 0) return false;
-        memoria.loadProgramAt(proceso.instrucciones, base);
+        List<Instruction> imagen = almacenamientoSecundario == null ? proceso.instrucciones
+                : almacenamientoSecundario.leerPrograma(proceso.pcb.getPid());
+        memoria.loadProgramAt(imagen, base);
         proceso.pcb.asignarRegionMemoria(base);
         proceso.registros.reset();
         proceso.registros.setPc(base);
         proceso.cpu = new Cpu(memoria, proceso.registros, proceso.pcb, proceso.pila, sistemaArchivos);
+        if (almacenamientoSecundario != null) almacenamientoSecundario.registrarEntradaEnMemoria(proceso.pcb.getPid(), base);
         memoria.actualizarBcp(proceso.pcb);
         return true;
     }
@@ -135,6 +146,28 @@ public class ProcessManager {
             actual.getPcb().setEstado(PCB.Estado.EJECUTANDO);
             memoria.actualizarBcp(actual.getPcb());
         }
+    }
+
+    /** Suspende el proceso que ocupa la CPU y despacha el siguiente listo. */
+    public Proceso suspenderActual() {
+        if (actual == null) return null;
+        Proceso proceso = actual;
+        proceso.getPcb().setEstado(PCB.Estado.SUSPENDIDO);
+        memoria.actualizarBcp(proceso.getPcb());
+        suspendidos.addLast(proceso);
+        actual = null;
+        despacharSiguiente();
+        return proceso;
+    }
+
+    /** Reincorpora el proceso suspendido más antiguo al final de la cola FCFS. */
+    public Proceso reanudarSiguiente() {
+        Proceso proceso = suspendidos.pollFirst();
+        if (proceso == null) return null;
+        proceso.getPcb().setEstado(PCB.Estado.LISTO);
+        memoria.actualizarBcp(proceso.getPcb());
+        listos.addLast(proceso);
+        return proceso;
     }
 
     /** Ejecuta una instrucción; FCFS mantiene la CPU hasta finalizar el trabajo. */
@@ -174,6 +207,7 @@ public class ProcessManager {
                 memoria.actualizarBcp(actual.pcb);
             }
             memoria.release(actual.getBase(), actual.getTamano());
+            if (almacenamientoSecundario != null) almacenamientoSecundario.registrarLiberacionDeMemoria(actual.pcb.getPid());
             actual = null;
             admitirEnEspera();
             despacharSiguiente();
@@ -201,6 +235,8 @@ public class ProcessManager {
     public boolean hayEsperandoEntrada() { return !esperaEntrada.isEmpty(); }
     public int getCantidadEsperandoEntrada() { return esperaEntrada.size(); }
     public boolean puedeAvanzar() { return actual != null || !listos.isEmpty() || !esperaMemoria.isEmpty(); }
+    public boolean haySuspendidos() { return !suspendidos.isEmpty(); }
+    public int getCantidadSuspendidos() { return suspendidos.size(); }
 
     public int runAll() {
         int pasos = 0;
@@ -219,6 +255,7 @@ public class ProcessManager {
 
     public List<Proceso> getProcesos() { return Collections.unmodifiableList(procesos); }
     public Proceso getActual() { return actual; }
-    public boolean hayPendientes() { return actual != null || !listos.isEmpty() || !esperaMemoria.isEmpty() || !esperaEntrada.isEmpty(); }
+    public boolean hayPendientes() { return actual != null || !listos.isEmpty() || !esperaMemoria.isEmpty()
+            || !esperaEntrada.isEmpty() || !suspendidos.isEmpty(); }
     public boolean estaVacio() { return procesos.isEmpty(); }
 }

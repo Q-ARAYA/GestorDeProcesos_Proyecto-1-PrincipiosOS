@@ -73,7 +73,9 @@ public class RegistrosPanel extends JPanel {
         lblAl.setText(String.valueOf(registros.get(RegisterName.AL)));
         lblBx.setText(String.valueOf(registros.get(RegisterName.BX)));
         lblCx.setText(String.valueOf(registros.get(RegisterName.CX)));
-        lblDx.setText(String.valueOf(registros.get(RegisterName.DX)));
+        lblDx.setText(registros.getTexto(RegisterName.DX) == null
+                ? String.valueOf(registros.get(RegisterName.DX))
+                : "\"" + registros.getTexto(RegisterName.DX) + "\"");
         lblPc.setText(String.valueOf(registros.getPc()));
         lblIr.setText(registros.getIr() == null ? "-" : registros.getIr().getSourceLine());
         lblFlags.setText((registros.isZeroFlag() ? "1" : "0") + " / "

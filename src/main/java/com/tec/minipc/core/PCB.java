@@ -50,6 +50,7 @@ public class PCB {
     private int bx;
     private int cx;
     private int dx;
+    private String dxTexto;
     private boolean zeroFlag;
     private boolean overflowFlag;
     private String irTexto = "-";
@@ -85,6 +86,7 @@ public class PCB {
         this.bx = registros.get(RegisterName.BX);
         this.cx = registros.get(RegisterName.CX);
         this.dx = registros.get(RegisterName.DX);
+        this.dxTexto = registros.getTexto(RegisterName.DX);
         this.zeroFlag = registros.isZeroFlag();
         this.overflowFlag = registros.isOverflowFlag();
         this.irTexto = registros.getIr() == null ? "-" : registros.getIr().getSourceLine();
@@ -154,6 +156,7 @@ public class PCB {
     public int getDx() {
         return dx;
     }
+    public String getDxTexto() { return dxTexto; }
 
     public boolean isZeroFlag() { return zeroFlag; }
     public boolean isOverflowFlag() { return overflowFlag; }

@@ -35,7 +35,8 @@ public final class AlmacenamientoPanel extends JPanel {
             return;
         }
         resumen.setText("Total: " + disco.getCapacidad() + " celdas  |  Índice: " + disco.getCeldasIndice()
-                + "  |  Archivos: " + disco.getArchivos().size() + "/" + SecondaryStorage.MAX_ARCHIVOS
+                + "  |  Programas: " + disco.getArchivos().size() + "/" + SecondaryStorage.MAX_ARCHIVOS
+                + "  |  Archivos: " + disco.getArchivosSistema().size() + "/" + SecondaryStorage.MAX_ARCHIVOS_SISTEMA
                 + "  |  Datos libres: " + disco.getCeldasDatosDisponibles()
                 + "  |  Datos INT 21H: " + disco.getBytesArchivosSistema() + " bytes"
                 + "  |  Páginas virtuales: " + disco.getPaginasVirtualesUsadas() + "/" + disco.getMemoriaVirtual());
@@ -50,6 +51,9 @@ public final class AlmacenamientoPanel extends JPanel {
         for (int i = disco.getInicioMemoriaVirtual(); i < disco.getCapacidad(); i++) {
             String contenido = disco.getValor(i);
             modelo.addRow(new Object[]{"Memoria virtual", i, contenido.isEmpty() ? "Página libre" : contenido});
+        }
+        for (String evento : disco.getEventosMemoriaVirtual()) {
+            modelo.addRow(new Object[]{"Transferencia virtual", "RAM/disco", evento});
         }
         if (sistemaArchivos != null) {
             for (String archivo : sistemaArchivos.getArchivos()) {
