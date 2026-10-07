@@ -33,10 +33,17 @@ public class MemoriaPanel extends JPanel {
     private int direccionResaltada = -1;
     private Memory memoriaActual;
 
+    /** Inicializa MemoriaPanel con los recursos y valores recibidos. */
     public MemoriaPanel() {
         setLayout(new BorderLayout());
 
         modelo = new DefaultTableModel(COLUMNAS, 0) {
+            /**
+             * Indica si la celda puede editarse directamente desde la tabla.
+             * @param row índice de fila
+             * @param column índice de columna
+             * @return true si se cumple la condición indicada; de lo contrario, false.
+             */
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false; // la memoria solo se modifica ejecutando instrucciones
@@ -61,6 +68,13 @@ public class MemoriaPanel extends JPanel {
         add(scroll, BorderLayout.CENTER);
     }
 
+    /**
+     * Crea una etiqueta de leyenda con los colores de una región de memoria.
+     * @param texto texto mostrado
+     * @param fondo color de fondo
+     * @param tinta color de texto
+     * @return valor calculado o estado consultado.
+     */
     private JLabel etiquetaLeyenda(String texto, Color fondo, Color tinta) {
         JLabel etiqueta = new JLabel("  " + texto + "  ");
         etiqueta.setOpaque(true);
@@ -99,6 +113,16 @@ public class MemoriaPanel extends JPanel {
 
     /** Distingue el kernel, el espacio de usuario y la dirección actual del PC. */
     private class ResaltadorCeldaActual extends DefaultTableCellRenderer {
+        /**
+         * Configura el aspecto de la celda según su contenido y estado.
+         * @param table tabla mostrada
+         * @param value valor de la celda
+         * @param isSelected indica si la fila está seleccionada
+         * @param hasFocus indica si la celda tiene el foco
+         * @param row fila de la tabla
+         * @param column columna de la tabla
+         * @return valor calculado o recurso consultado.
+         */
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value,
                 boolean isSelected, boolean hasFocus, int row, int column) {

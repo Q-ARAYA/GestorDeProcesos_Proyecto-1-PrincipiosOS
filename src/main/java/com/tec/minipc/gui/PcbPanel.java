@@ -25,6 +25,7 @@ public final class PcbPanel extends JPanel {
     private final JPanel lista = new JPanel();
     private final JLabel resumen = new JLabel("Kernel listo para recibir procesos");
 
+    /** Inicializa PcbPanel con los recursos y valores recibidos. */
     public PcbPanel() {
         super(new BorderLayout(0, 10));
         setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
@@ -73,6 +74,12 @@ public final class PcbPanel extends JPanel {
         lista.repaint();
     }
 
+    /**
+     * Construye la tarjeta visual con los atributos de un BCP.
+     * @param pcb bloque de control del proceso
+     * @param memoria memoria principal
+     * @return valor calculado o estado consultado.
+     */
     private JPanel crearBloque(PCB pcb, Memory memoria) {
         JPanel bloque = new JPanel(new BorderLayout(0, 8));
         bloque.setBackground(Color.WHITE);
@@ -116,6 +123,14 @@ public final class PcbPanel extends JPanel {
         return bloque;
     }
 
+    /**
+     * Crea una celda de atributo con alineación y estilo uniforme.
+     * @param direccion dirección consultada
+     * @param numero número que se presentará en la celda
+     * @param etiqueta texto de la etiqueta
+     * @param valor valor que se asignará
+     * @return valor calculado o estado consultado.
+     */
     private JPanel crearCelda(int direccion, int numero, String etiqueta, String valor) {
         JPanel fila = new JPanel(new BorderLayout(8, 0));
         fila.setBackground(numero % 2 == 0 ? new Color(235, 248, 254) : Color.WHITE);
@@ -139,6 +154,11 @@ public final class PcbPanel extends JPanel {
         return fila;
     }
 
+    /**
+     * Genera el texto compacto usado para presentar un campo del BCP.
+     * @param indice posición en el índice
+     * @return valor calculado o estado consultado.
+     */
     private String etiquetaCelda(int indice) {
         return switch (indice) {
             case 0 -> "Identificación";
@@ -150,6 +170,11 @@ public final class PcbPanel extends JPanel {
         };
     }
 
+    /**
+     * Selecciona el color asociado con el estado del proceso.
+     * @param estado estado del proceso
+     * @return valor calculado o estado consultado.
+     */
     private Color colorEstado(PCB.Estado estado) {
         return switch (estado) {
             case EJECUTANDO -> new Color(18, 76, 125);

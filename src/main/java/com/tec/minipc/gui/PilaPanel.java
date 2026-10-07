@@ -13,6 +13,7 @@ public class PilaPanel extends JPanel {
     private final JTextArea contenido = new JTextArea(4, 16);
     private final JLabel estado = new JLabel("SP=0/5");
 
+    /** Inicializa PilaPanel con los recursos y valores recibidos. */
     public PilaPanel() {
         setBorder(BorderFactory.createTitledBorder("Pila (5 posiciones)"));
         setLayout(new BorderLayout(2, 2));
@@ -22,6 +23,11 @@ public class PilaPanel extends JPanel {
         limpiar();
     }
 
+    /**
+     * Actualiza la vista con el estado recibido.
+     * @param pila pila del proceso
+     * @param error mensaje de error que se mostrará
+     */
     public void actualizar(ProcessStack pila, String error) {
         List<Integer> valores = pila.getValoresDeArribaAbajo();
         StringBuilder texto = new StringBuilder();
@@ -33,6 +39,7 @@ public class PilaPanel extends JPanel {
                 + (error == null || error.isEmpty() ? "" : " | " + error));
     }
 
+    /** Limpia el estado actual. */
     public void limpiar() {
         contenido.setText("[vacía]\n[vacía]\n[vacía]\n[vacía]\n[vacía]");
         estado.setText("SP=0/5");

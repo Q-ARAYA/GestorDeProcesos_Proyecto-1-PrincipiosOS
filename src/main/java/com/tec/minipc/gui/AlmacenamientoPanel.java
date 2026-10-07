@@ -15,9 +15,16 @@ public final class AlmacenamientoPanel extends JPanel {
     private final JLabel resumen = new JLabel("Disco secundario sin configurar");
     private final DefaultTableModel modelo = new DefaultTableModel(
             new Object[]{"Zona", "Dirección", "Contenido"}, 0) {
-        @Override public boolean isCellEditable(int row, int column) { return false; }
+    /**
+     * Indica si la celda puede editarse directamente desde la tabla.
+     * @param row índice de fila
+     * @param column índice de columna
+     * @return true si se cumple la condición indicada; de lo contrario, false.
+     */
+    @Override public boolean isCellEditable(int row, int column) { return false; }
     };
 
+    /** Inicializa AlmacenamientoPanel con los recursos y valores recibidos. */
     public AlmacenamientoPanel() {
         setBorder(BorderFactory.createTitledBorder("Almacenamiento secundario"));
         setLayout(new BorderLayout(4, 4));
@@ -26,8 +33,17 @@ public final class AlmacenamientoPanel extends JPanel {
         add(new JScrollPane(tabla), BorderLayout.CENTER);
     }
 
+    /**
+     * Refresca la vista con los datos actuales del modelo recibido.
+     * @param disco almacenamiento secundario que se presentará
+     */
     public void actualizar(SecondaryStorage disco) { actualizar(disco, null); }
 
+    /**
+     * Refresca la vista con los datos actuales del modelo recibido.
+     * @param disco almacenamiento secundario que se presentará
+     * @param sistemaArchivos sistema de archivos simulado
+     */
     public void actualizar(SecondaryStorage disco, SimulatedFileSystem sistemaArchivos) {
         modelo.setRowCount(0);
         if (disco == null) {

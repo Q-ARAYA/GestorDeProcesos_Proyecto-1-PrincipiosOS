@@ -13,9 +13,16 @@ import java.util.List;
 public class TrabajosPanel extends JPanel {
     private final DefaultTableModel modelo = new DefaultTableModel(
             new Object[]{"PID", "Programa", "Estado", "BCP", "Base", "Tamaño", "CPU s", "Inicio", "Fin"}, 0) {
-        @Override public boolean isCellEditable(int row, int column) { return false; }
+    /**
+     * Indica si la celda puede editarse directamente desde la tabla.
+     * @param row índice de fila
+     * @param column índice de columna
+     * @return true si se cumple la condición indicada; de lo contrario, false.
+     */
+    @Override public boolean isCellEditable(int row, int column) { return false; }
     };
 
+    /** Inicializa TrabajosPanel con los recursos y valores recibidos. */
     public TrabajosPanel() {
         setBorder(BorderFactory.createTitledBorder("Lista de trabajos (FCFS)"));
         setLayout(new BorderLayout());
@@ -23,6 +30,10 @@ public class TrabajosPanel extends JPanel {
         add(new JScrollPane(tabla), BorderLayout.CENTER);
     }
 
+    /**
+     * Actualiza la vista con el estado recibido.
+     * @param procesos procesos que se van a representar
+     */
     public void actualizar(List<ProcessManager.Proceso> procesos) {
         modelo.setRowCount(0);
         for (ProcessManager.Proceso p : procesos) {

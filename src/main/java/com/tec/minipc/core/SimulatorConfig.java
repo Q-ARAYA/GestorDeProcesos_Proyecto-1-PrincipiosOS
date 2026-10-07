@@ -17,8 +17,14 @@ public final class SimulatorConfig {
     private int discoSecundario = SecondaryStorage.TAMANO_POR_DEFECTO;
     private int memoriaVirtual = SecondaryStorage.MEMORIA_VIRTUAL_POR_DEFECTO;
 
+    /** Inicializa SimulatorConfig con los recursos y valores recibidos. */
     private SimulatorConfig() { }
 
+    /**
+     * Carga el estado actual.
+     * @return resultado generado por la operación.
+     * @throws IOException si ocurre un error durante la operación.
+     */
     public static SimulatorConfig cargar() throws IOException {
         SimulatorConfig config = new SimulatorConfig();
         if (Files.exists(ARCHIVO)) {
@@ -33,6 +39,10 @@ public final class SimulatorConfig {
         return config;
     }
 
+    /**
+     * Guarda el estado actual.
+     * @throws IOException si ocurre un error durante la operación.
+     */
     public void guardar() throws IOException {
         validar();
         Properties propiedades = new Properties();
@@ -45,6 +55,7 @@ public final class SimulatorConfig {
         }
     }
 
+    /** Valida el estado actual. */
     private void validar() {
         if (memoriaPrincipal < Memory.TAMANO_MINIMO || memoriaPrincipal > 4096)
             throw new IllegalArgumentException("La memoria principal debe estar entre 128 y 4096 celdas.");
@@ -56,10 +67,33 @@ public final class SimulatorConfig {
             throw new IllegalArgumentException("La memoria virtual excede el espacio disponible en el disco.");
     }
 
+    /**
+     * Devuelve la capacidad configurada de memoria principal.
+     * @return valor numérico producido por la operación.
+     */
     public int getMemoriaPrincipal() { return memoriaPrincipal; }
+    /**
+     * Devuelve el porcentaje de memoria reservado al kernel.
+     * @return valor numérico producido por la operación.
+     */
     public int getKernelPorcentaje() { return kernelPorcentaje; }
+    /**
+     * Devuelve la capacidad configurada del almacenamiento secundario.
+     * @return valor numérico producido por la operación.
+     */
     public int getDiscoSecundario() { return discoSecundario; }
+    /**
+     * Devuelve el número de páginas virtuales configuradas.
+     * @return valor numérico producido por la operación.
+     */
     public int getMemoriaVirtual() { return memoriaVirtual; }
+    /**
+     * Valida y actualiza en conjunto la memoria principal, kernel, disco y región virtual.
+     * @param principal capacidad total de memoria principal
+     * @param kernel porcentaje reservado al kernel
+     * @param disco disco simulado
+     * @param virtual tamaño de memoria virtual
+     */
     public void setValores(int principal, int kernel, int disco, int virtual) {
         memoriaPrincipal = principal; kernelPorcentaje = kernel;
         discoSecundario = disco; memoriaVirtual = virtual;

@@ -7,11 +7,9 @@ import com.tec.minipc.model.Registers;
 
 /**
  * Motor de ejecución del Mini PC: implementa el ciclo fetch-decode-execute.
- *
  * Se puede avanzar de dos formas:
- *   - step()   -> un solo ciclo (botón "Siguiente" para ejecución paso a paso)
- *   - runAll() -> ejecuta todo el programa de corrido (botón de ejecución automática)
- *
+ * - step()   -> un solo ciclo (botón "Siguiente" para ejecución paso a paso)
+ * - runAll() -> ejecuta todo el programa de corrido (botón de ejecución automática)
  * El límite de ejecución se calcula a partir de los datos del PCB (dirección
  * base + tamaño del programa en instrucciones), no solo de si la celda está
  * vacía, para que el CPU sepa con certeza dónde termina el proceso actual.
@@ -32,14 +30,35 @@ public class Cpu {
     private boolean instruccionIniciadaEsteTick;
     private long tiempoCpuSegundos;
 
+    /**
+     * Inicializa Cpu con los recursos y valores recibidos.
+     * @param memoria memoria principal asociada
+     * @param registros registros que conservará la CPU
+     * @param pcb bloque de control del proceso
+     */
     public Cpu(Memory memoria, Registers registros, PCB pcb) {
         this(memoria, registros, pcb, new ProcessStack(), null);
     }
 
+    /**
+     * Inicializa Cpu con los recursos y valores recibidos.
+     * @param memoria memoria principal asociada
+     * @param registros registros que conservará la CPU
+     * @param pcb bloque de control del proceso
+     * @param pila pila privada del proceso
+     */
     public Cpu(Memory memoria, Registers registros, PCB pcb, ProcessStack pila) {
         this(memoria, registros, pcb, pila, null);
     }
 
+    /**
+     * Inicializa Cpu con los recursos y valores recibidos.
+     * @param memoria memoria principal asociada
+     * @param registros registros que conservará la CPU
+     * @param pcb bloque de control del proceso
+     * @param pila pila privada del proceso
+     * @param sistemaArchivos servicio de archivos simulado
+     */
     public Cpu(Memory memoria, Registers registros, PCB pcb, ProcessStack pila, SimulatedFileSystem sistemaArchivos) {
         this.memoria = memoria;
         this.registros = registros;
@@ -50,28 +69,68 @@ public class Cpu {
         pcb.setEstado(PCB.Estado.LISTO);
     }
 
+    /**
+     * Indica si terminado.
+     * @return true si se cumple la condición indicada; de lo contrario, false.
+     */
     public boolean isTerminado() {
         return terminado;
     }
 
+    /**
+     * Devuelve el conjunto de registros modificado por esta CPU.
+     * @return valor, objeto o colección descrita en el resumen del método.
+     */
     public Registers getRegistros() {
         return registros;
     }
 
+    /**
+     * Devuelve el BCP actualizado durante la ejecución.
+     * @return valor, objeto o colección descrita en el resumen del método.
+     */
     public PCB getPcb() {
         return pcb;
     }
 
+    /**
+     * Devuelve la memoria principal utilizada por esta CPU.
+     * @return valor, objeto o colección descrita en el resumen del método.
+     */
     public Memory getMemoria() {
         return memoria;
     }
 
+    /**
+     * Establece entrada teclado con el valor recibido.
+     * @param valor valor que se asignará o procesará
+     */
     public void setEntradaTeclado(int valor) { this.entradaTeclado = valor; }
 
+    /**
+     * Devuelve el último error registrado en el BCP.
+     * @return valor calculado o estado consultado.
+     */
     public String getMensajeError() { return pcb.getMensajeError(); }
+    /**
+     * Indica si hay instruccion en curso.
+     * @return true si se cumple la condición indicada; de lo contrario, false.
+     */
     public boolean hayInstruccionEnCurso() { return ticksRestantes > 0; }
+    /**
+     * Indica si la instrucción actual empezó en este tick.
+     * @return true si se cumple la condición indicada; de lo contrario, false.
+     */
     public boolean inicioInstruccionEsteTick() { return instruccionIniciadaEsteTick; }
+    /**
+     * Devuelve la dirección de la instrucción que se está ejecutando.
+     * @return valor calculado o estado consultado.
+     */
     public int getDireccionInstruccionEnCurso() { return direccionInstruccionEnCurso; }
+    /**
+     * Devuelve los segundos simulados consumidos por este proceso.
+     * @return cantidad de tiempo acumulado en segundos simulados.
+     */
     public long getTiempoCpuSegundos() { return tiempoCpuSegundos; }
 
     /**
@@ -83,6 +142,7 @@ public class Cpu {
         if (terminado) return null;
         int limite = pcb.getDireccionBase() + pcb.getTamanoInstrucciones();
 
+        // Las instrucciones con peso mayor que uno consumen varios ticks; su efecto se ejecuta una sola vez al iniciarlas.
         if (ticksRestantes > 0) {
             ticksRestantes--;
             tiempoCpuSegundos++;
@@ -93,6 +153,7 @@ public class Cpu {
             return instruccionEnCurso;
         }
 
+        // Se valida el PC contra el límite del PCB y la memoria antes de leer la instrucción.
         int direccionActual = registros.getPc();
         if (direccionActual >= limite || !memoria.isValidAddress(direccionActual)
                 || memoria.isEmpty(direccionActual)) {
@@ -126,14 +187,20 @@ public class Cpu {
         return instruccionEnCurso;
     }
 
+    /** Realiza la operación terminar proceso en Cpu. */
     private void terminarProceso() {
         terminado = true;
         if (pcb.getEstado() != PCB.Estado.ERROR) pcb.setEstado(PCB.Estado.TERMINADO);
         pcb.marcarFin();
     }
 
+    /**
+     * Aplica a los registros, la pila o los servicios simulados el efecto definido por el código de operación.
+     * @param instruccion instrucción que se procesa
+     */
     private void ejecutar(Instruction instruccion) {
         RegisterName reg = instruccion.getRegister();
+        // Este switch implementa el decodificador funcional: cada opcode modifica el estado simulado correspondiente.
         switch (instruccion.getOpcode()) {
             case MOV:
                 if (instruccion.getStringOperand() != null) registros.setTexto(reg, instruccion.getStringOperand());
@@ -232,6 +299,10 @@ public class Cpu {
         }
     }
 
+    /**
+     * Actualiza flags.
+     * @param resultado mensaje combinado con los errores de ensamblado
+     */
     private void actualizarFlags(long resultado) {
         registros.setZeroFlag((int) resultado == 0);
         registros.setOverflowFlag(resultado < Integer.MIN_VALUE || resultado > Integer.MAX_VALUE);

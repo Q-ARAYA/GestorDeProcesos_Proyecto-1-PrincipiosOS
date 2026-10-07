@@ -51,6 +51,7 @@ public class MainFrame extends JFrame {
     private int memoriaVirtualConfigurada;
     private ProcessManager.Proceso procesoMostrado;
 
+    /** Inicializa MainFrame con los recursos y valores recibidos. */
     public MainFrame() {
         super("Mini PC - Gestor de procesos FCFS");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -64,6 +65,7 @@ public class MainFrame extends JFrame {
         actualizarBotones();
     }
 
+    /** Construye y distribuye los paneles y controles de la ventana principal. */
     private void armarLayout() {
         UIManager.put("TabbedPane.selected", new Color(190, 228, 246));
         UIManager.put("TabbedPane.background", new Color(229, 245, 252));
@@ -170,6 +172,13 @@ public class MainFrame extends JFrame {
         });
     }
 
+    /**
+     * Añade al panel de configuración una etiqueta, un control numérico y su ayuda.
+     * @param panel panel al que se agrega la configuración
+     * @param texto texto mostrado
+     * @param spinner control numérico de la opción
+     * @param ayuda texto de ayuda
+     */
     private void agregarConfiguracion(JPanel panel, String texto, JSpinner spinner, String ayuda) {
         JLabel etiqueta = new JLabel(texto);
         etiqueta.setFont(new Font("Segoe UI", Font.BOLD, 11));
@@ -181,6 +190,14 @@ public class MainFrame extends JFrame {
         panel.add(spinner);
     }
 
+    /**
+     * Construye un divisor redimensionable con la proporción inicial indicada.
+     * @param orientacion orientación del divisor
+     * @param superior componente superior
+     * @param inferior componente inferior
+     * @param proporcion proporción inicial
+     * @return divisor que contiene ambos componentes.
+     */
     private JSplitPane crearDivision(int orientacion, Component superior, Component inferior, double proporcion) {
         JSplitPane division = new JSplitPane(orientacion, superior, inferior);
         division.setResizeWeight(proporcion);
@@ -191,6 +208,13 @@ public class MainFrame extends JFrame {
         return division;
     }
 
+    /**
+     * Crea un panel de sección con título, contenido y color de énfasis.
+     * @param titulo texto que encabeza la sección
+     * @param contenido componente visual que ocupará el centro de la sección
+     * @param color color aplicado
+     * @return panel compuesto con encabezado y contenido.
+     */
     private JPanel seccion(String titulo, Component contenido, Color color) {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(Color.WHITE);
@@ -210,6 +234,11 @@ public class MainFrame extends JFrame {
         return panel;
     }
 
+    /**
+     * Aplica formato a boton.
+     * @param boton botón cuyo estilo se configura
+     * @param color color aplicado
+     */
     private void estilizarBoton(JButton boton, Color color) {
         boton.setBackground(color);
         boton.setForeground(Color.WHITE);
@@ -218,6 +247,10 @@ public class MainFrame extends JFrame {
                 BorderFactory.createLineBorder(new Color(18, 76, 125)), new EmptyBorder(5, 9, 5, 9)));
     }
 
+    /**
+     * Aplica formato a componentes.
+     * @param componente componente visual que se procesa
+     */
     private void estilizarComponentes(Component componente) {
         if (componente instanceof JTable tabla) {
             tabla.setFont(new Font("Segoe UI", Font.PLAIN, 12));
@@ -252,6 +285,7 @@ public class MainFrame extends JFrame {
         }
     }
 
+    /** Asocia los controles de la interfaz con sus manejadores de eventos. */
     private void registrarAcciones() {
         btnCargar.addActionListener(e -> onCargar());
         btnSiguiente.addActionListener(e -> onSiguiente());
@@ -262,6 +296,7 @@ public class MainFrame extends JFrame {
         btnGuardarConfig.addActionListener(e -> guardarConfiguracionDesdeInterfaz());
     }
 
+    /** Atiende la acción de interfaz relacionada con cargar. */
     private void onCargar() {
         JFileChooser chooser = new JFileChooser();
         chooser.setMultiSelectionEnabled(true);
@@ -270,6 +305,10 @@ public class MainFrame extends JFrame {
         cargarProgramas(chooser.getSelectedFiles());
     }
 
+    /**
+     * Lee los archivos seleccionados y los admite individualmente en el gestor de procesos.
+     * @param archivos colección de archivos
+     */
     private void cargarProgramas(File[] archivos) {
         int total = (Integer) spTotal.getValue();
         int porcentajeKernel = (Integer) spKernel.getValue();
@@ -333,6 +372,7 @@ public class MainFrame extends JFrame {
         actualizarBotones();
     }
 
+    /** Atiende la acción de interfaz relacionada con siguiente. */
     private void onSiguiente() {
         if (gestor == null || !gestor.puedeAvanzar()) return;
         int entradasEsperandoAntes = gestor.getCantidadEsperandoEntrada();
@@ -356,6 +396,7 @@ public class MainFrame extends JFrame {
         avisarSiLaCpuQuedoSinTrabajo();
     }
 
+    /** Atiende la acción de interfaz relacionada con ejecutar todo. */
     private void onEjecutarTodo() {
         if (gestor == null || !gestor.puedeAvanzar()) return;
         int entradasEsperandoAntes = gestor.getCantidadEsperandoEntrada();
@@ -396,6 +437,10 @@ public class MainFrame extends JFrame {
         }
     }
 
+    /**
+     * Muestra el diálogo de entrada y valida el valor que se entregará al dispositivo simulado.
+     * @return resultado generado por la operación.
+     */
     private boolean solicitarEntradaTeclado() {
         ProcessManager.Proceso esperando = gestor.getProcesos().stream()
                 .filter(p -> p.getPcb().getEstado() == PCB.Estado.ESPERA
@@ -431,6 +476,7 @@ public class MainFrame extends JFrame {
         }
     }
 
+    /** Realiza la operación avisar si la CPU quedo sin trabajo en MainFrame. */
     private void avisarSiLaCpuQuedoSinTrabajo() {
         if (gestor == null || !gestor.hayPendientes() || gestor.puedeAvanzar()
                 || gestor.hayEsperandoEntrada() || !gestor.haySuspendidos()) return;
@@ -440,11 +486,16 @@ public class MainFrame extends JFrame {
                 "Simulación en pausa", JOptionPane.INFORMATION_MESSAGE);
     }
 
+    /**
+     * Devuelve el último proceso admitido, o null cuando no hay procesos.
+     * @return valor, objeto o colección descrita en el resumen del método.
+     */
     private ProcessManager.Proceso ultimoProceso() {
         List<ProcessManager.Proceso> lista = gestor.getProcesos();
         return lista.isEmpty() ? null : lista.get(lista.size() - 1);
     }
 
+    /** Atiende la acción de interfaz relacionada con reiniciar. */
     private void onReiniciar() {
         gestor = null; memoria = null; almacenamiento = null; procesoMostrado = null;
         codigoPanel.cargar(new ArrayList<>());
@@ -476,6 +527,10 @@ public class MainFrame extends JFrame {
         actualizarBotones();
     }
 
+    /**
+     * Sincroniza todo.
+     * @param mostrarCodigo indica si se debe recargar el código visible
+     */
     private void refrescarTodo(boolean mostrarCodigo) {
         if (gestor == null || memoria == null) return;
         ProcessManager.Proceso actual = gestor.getActual();
@@ -500,11 +555,19 @@ public class MainFrame extends JFrame {
                 gestor.getSistemaArchivos() == null ? null : gestor.getSistemaArchivos().getEventos());
     }
 
+    /**
+     * Muestra el mensaje de error en un diálogo para el usuario.
+     * @param mensaje mensaje asociado con el estado
+     */
     private void mostrarError(String mensaje) {
         JOptionPane.showMessageDialog(this, mensaje, "Error", JOptionPane.ERROR_MESSAGE);
         lblMensaje.setText("No se pudo completar la operación.");
     }
 
+    /**
+     * Atiende la acción de interfaz relacionada con enviar entrada.
+     * @param valor valor que se asignará o procesará
+     */
     private void onEnviarEntrada(int valor) {
         if (gestor == null) {
             mostrarError("Cargue un programa que utilice INT 09H antes de enviar datos.");
@@ -518,6 +581,7 @@ public class MainFrame extends JFrame {
         actualizarBotones();
     }
 
+    /** Actualiza dispositivos. */
     private void actualizarDispositivos() {
         if (gestor == null) {
             dispositivosPanel.actualizar(new ArrayList<>(), 0);
@@ -529,10 +593,17 @@ public class MainFrame extends JFrame {
         }
     }
 
+    /**
+     * Convierte el porcentaje configurado en cantidad de celdas del kernel.
+     * @param memoriaTotal cantidad total de celdas de RAM
+     * @param porcentaje porcentaje reservado
+     * @return valor calculado o estado consultado.
+     */
     private int calcularTamanoKernel(int memoriaTotal, int porcentaje) {
         return (int) Math.ceil(memoriaTotal * porcentaje / 100.0);
     }
 
+    /** Atiende la acción de interfaz relacionada con suspender. */
     private void onSuspender() {
         if (gestor == null) return;
         ProcessManager.Proceso suspendido = gestor.suspenderActual();
@@ -547,6 +618,7 @@ public class MainFrame extends JFrame {
         avisarSiLaCpuQuedoSinTrabajo();
     }
 
+    /** Atiende la acción de interfaz relacionada con reanudar. */
     private void onReanudar() {
         if (gestor == null) return;
         ProcessManager.Proceso reanudado = gestor.reanudarSiguiente();
@@ -564,6 +636,7 @@ public class MainFrame extends JFrame {
                 "Proceso reanudado", JOptionPane.INFORMATION_MESSAGE);
     }
 
+    /** Carga configuracion inicial. */
     private void cargarConfiguracionInicial() {
         try {
             SimulatorConfig config = SimulatorConfig.cargar();
@@ -576,6 +649,7 @@ public class MainFrame extends JFrame {
         }
     }
 
+    /** Guarda configuracion desde interfaz. */
     private void guardarConfiguracionDesdeInterfaz() {
         int total = (Integer) spTotal.getValue();
         int kernel = (Integer) spKernel.getValue();
@@ -591,6 +665,13 @@ public class MainFrame extends JFrame {
         }
     }
 
+    /**
+     * Guarda configuracion silenciosa.
+     * @param total capacidad total configurada
+     * @param kernel porcentaje reservado al kernel
+     * @param disco almacenamiento secundario que se presentará
+     * @param virtual tamaño de memoria virtual
+     */
     private void guardarConfiguracionSilenciosa(int total, int kernel, int disco, int virtual) {
         try {
             SimulatorConfig config = SimulatorConfig.cargar();
@@ -601,6 +682,7 @@ public class MainFrame extends JFrame {
         }
     }
 
+    /** Actualiza botones. */
     private void actualizarBotones() {
         boolean pendientes = gestor != null && gestor.puedeAvanzar();
         btnSiguiente.setEnabled(pendientes);

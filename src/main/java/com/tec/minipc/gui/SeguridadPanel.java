@@ -13,6 +13,7 @@ import java.util.List;
 public final class SeguridadPanel extends JPanel {
     private final JTextArea texto = new JTextArea();
 
+    /** Inicializa SeguridadPanel con los recursos y valores recibidos. */
     public SeguridadPanel() {
         setBorder(BorderFactory.createTitledBorder("Protección y seguridad"));
         setLayout(new BorderLayout());
@@ -23,6 +24,12 @@ public final class SeguridadPanel extends JPanel {
         actualizar(List.of(), List.of(), null);
     }
 
+    /**
+     * Actualiza la vista con el estado recibido.
+     * @param procesos procesos que se van a representar
+     * @param eventos eventos de proceso que se presentan
+     * @param eventosArchivos eventos del sistema de archivos
+     */
     public void actualizar(List<ProcessManager.Proceso> procesos, List<String> eventos,
             List<String> eventosArchivos) {
         StringBuilder contenido = new StringBuilder();

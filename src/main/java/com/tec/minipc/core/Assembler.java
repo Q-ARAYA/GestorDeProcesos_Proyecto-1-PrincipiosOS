@@ -14,12 +14,11 @@ import java.util.List;
  * Se encarga de leer un archivo .asm del disco, validar que cada línea cumpla
  * el formato requerido y convertirlo en una lista de {@link Instruction} lista
  * para cargar en memoria.
- *
  * Reglas de lectura:
- *   - Se ignoran las líneas en blanco.
- *   - Se ignoran los comentarios: todo lo que esté después de ';' o '#' en una línea.
- *   - Cada línea de código restante debe cumplir el formato que valida Instruction.parse().
- *   - El archivo debe tener extensión .asm.
+ * - Se ignoran las líneas en blanco.
+ * - Se ignoran los comentarios: todo lo que esté después de ';' o '#' en una línea.
+ * - Cada línea de código restante debe cumplir el formato que valida Instruction.parse().
+ * - El archivo debe tener extensión .asm.
  */
 public class Assembler {
 
@@ -27,12 +26,11 @@ public class Assembler {
 
     /**
      * Lee y valida un archivo .asm completo.
-     *
      * @param archivo el archivo .asm a cargar
      * @return la lista de instrucciones parseadas, en el mismo orden del archivo
      * @throws IOException si el archivo no existe o no se puede leer
      * @throws AssemblyException si el archivo no tiene la extensión correcta o si
-     *         alguna línea no cumple el formato requerido (incluye TODOS los errores encontrados)
+     * alguna línea no cumple el formato requerido (incluye TODOS los errores encontrados)
      */
     public static List<Instruction> loadFromFile(File archivo) throws IOException, AssemblyException {
         validarExtension(archivo);
@@ -43,6 +41,7 @@ public class Assembler {
         try (BufferedReader reader = new BufferedReader(new FileReader(archivo))) {
             String linea;
             int numeroLinea = 0;
+            // Se recorre todo el archivo para informar varios errores de sintaxis en una sola carga.
             while ((linea = reader.readLine()) != null) {
                 numeroLinea++;
                 String codigo = quitarComentario(linea).trim();
@@ -79,6 +78,7 @@ public class Assembler {
             Instruction instruccion = instrucciones.get(i);
             Opcode opcode = instruccion.getOpcode();
             if (opcode != Opcode.JMP && opcode != Opcode.JE && opcode != Opcode.JNE) continue;
+            // El salto es relativo a la instrucción siguiente, porque el PC ya avanzó al leer la instrucción actual.
             int destino = i + 1 + instruccion.getOperand();
             if (destino < 0 || destino > instrucciones.size()) {
                 errores.add("Salto fuera del programa en instrucción " + (i + 1) + " ("
@@ -89,6 +89,11 @@ public class Assembler {
         if (!errores.isEmpty()) throw new AssemblyException(errores);
     }
 
+    /**
+     * Valida extension.
+     * @param archivo archivo que se procesará
+     * @throws AssemblyException si ocurre un error durante la operación.
+     */
     private static void validarExtension(File archivo) throws AssemblyException {
         String nombre = archivo.getName().toLowerCase();
         if (!nombre.endsWith(EXTENSION_REQUERIDA)) {
@@ -99,6 +104,11 @@ public class Assembler {
         }
     }
 
+    /**
+     * Elimina de una línea el texto que empieza en el primer marcador de comentario.
+     * @param linea texto de entrada que se analizará
+     * @return resultado generado por la operación.
+     */
     private static String quitarComentario(String linea) {
         int idx = -1;
         for (int i = 0; i < linea.length(); i++) {

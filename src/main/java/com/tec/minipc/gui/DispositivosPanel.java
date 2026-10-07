@@ -22,6 +22,10 @@ public class DispositivosPanel extends JPanel {
     private final PilaPanel pilaPanel = new PilaPanel();
     private final IntConsumer enviarEntrada;
 
+    /**
+     * Inicializa DispositivosPanel con los recursos y valores recibidos.
+     * @param enviarEntrada función que recibe el dato introducido por el usuario
+     */
     public DispositivosPanel(IntConsumer enviarEntrada) {
         this.enviarEntrada = enviarEntrada;
         setBorder(BorderFactory.createTitledBorder("Dispositivos de entrada / salida"));
@@ -52,6 +56,7 @@ public class DispositivosPanel extends JPanel {
         add(panelLateral, BorderLayout.EAST);
     }
 
+    /** Envía el estado actual. */
     private void enviar() {
         String texto = campoEntrada.getText().trim();
         try {
@@ -65,6 +70,11 @@ public class DispositivosPanel extends JPanel {
         }
     }
 
+    /**
+     * Actualiza la vista con el estado recibido.
+     * @param salida salida de pantalla acumulada
+     * @param procesosEsperando cantidad de procesos bloqueados por teclado
+     */
     public void actualizar(List<String> salida, int procesosEsperando) {
         pantalla.setText(String.join(System.lineSeparator(), salida));
         if (procesosEsperando > 0) {
@@ -75,11 +85,17 @@ public class DispositivosPanel extends JPanel {
         pantalla.setCaretPosition(pantalla.getDocument().getLength());
     }
 
+    /**
+     * Actualiza pila.
+     * @param pila pila del proceso
+     * @param error mensaje de error que se mostrará
+     */
     public void actualizarPila(ProcessStack pila, String error) {
         if (pila == null) pilaPanel.limpiar();
         else pilaPanel.actualizar(pila, error);
     }
 
+    /** Limpia el estado actual. */
     public void limpiar() {
         pantalla.setText("");
         campoEntrada.setText("");

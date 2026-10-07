@@ -32,10 +32,17 @@ public class CodigoPanel extends JPanel {
     private final JTable tabla;
     private int indiceResaltado = 0;
 
+    /** Inicializa CodigoPanel con los recursos y valores recibidos. */
     public CodigoPanel() {
         setLayout(new BorderLayout());
 
         modelo = new DefaultTableModel(COLUMNAS, 0) {
+            /**
+             * Indica si la celda puede editarse directamente desde la tabla.
+             * @param row índice de fila
+             * @param column índice de columna
+             * @return true si se cumple la condición indicada; de lo contrario, false.
+             */
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
@@ -80,6 +87,16 @@ public class CodigoPanel extends JPanel {
 
     /** Resalta la instrucción actual con el mismo tono que el PC en memoria. */
     private class ResaltadorInstruccionActual extends DefaultTableCellRenderer {
+        /**
+         * Configura el aspecto de la celda según su contenido y estado.
+         * @param table tabla mostrada
+         * @param value valor de la celda
+         * @param isSelected indica si la fila está seleccionada
+         * @param hasFocus indica si la celda tiene el foco
+         * @param row fila de la tabla
+         * @param column columna de la tabla
+         * @return valor calculado o recurso consultado.
+         */
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value,
                 boolean isSelected, boolean hasFocus, int row, int column) {

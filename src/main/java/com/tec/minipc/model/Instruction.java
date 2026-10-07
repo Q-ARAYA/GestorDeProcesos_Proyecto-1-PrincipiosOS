@@ -24,16 +24,43 @@ public class Instruction {
         this(opcode, register, null, operand, sourceLine, Collections.emptyList(), null);
     }
 
+    /**
+     * Inicializa Instruction con los recursos y valores recibidos.
+     * @param opcode código de operación
+     * @param register registro destino de la instrucción
+     * @param registerOperand registro usado como segundo operando
+     * @param operand operando inmediato
+     * @param sourceLine línea fuente asociada
+     */
     private Instruction(Opcode opcode, RegisterName register, RegisterName registerOperand,
             int operand, String sourceLine) {
         this(opcode, register, registerOperand, operand, sourceLine, Collections.emptyList(), null);
     }
 
+    /**
+     * Inicializa Instruction con los recursos y valores recibidos.
+     * @param opcode código de operación
+     * @param register registro destino de la instrucción
+     * @param registerOperand registro usado como segundo operando
+     * @param operand operando inmediato
+     * @param sourceLine línea fuente asociada
+     * @param parametros valores asociados a la instrucción
+     */
     private Instruction(Opcode opcode, RegisterName register, RegisterName registerOperand,
             int operand, String sourceLine, List<Integer> parametros) {
         this(opcode, register, registerOperand, operand, sourceLine, parametros, null);
     }
 
+    /**
+     * Inicializa Instruction con los recursos y valores recibidos.
+     * @param opcode código de operación
+     * @param register registro destino de la instrucción
+     * @param registerOperand registro usado como segundo operando
+     * @param operand operando inmediato
+     * @param sourceLine línea fuente asociada
+     * @param parametros valores asociados a la instrucción
+     * @param stringOperand operando de texto opcional
+     */
     private Instruction(Opcode opcode, RegisterName register, RegisterName registerOperand,
             int operand, String sourceLine, List<Integer> parametros, String stringOperand) {
         this.opcode = opcode;
@@ -46,6 +73,7 @@ public class Instruction {
         validar();
     }
 
+    /** Valida el estado actual. */
     private void validar() {
         if ((opcode == Opcode.MOV || esSalto(opcode)) && (operand < -127 || operand > 127)) {
             throw new IllegalArgumentException("El valor inmediato " + operand
@@ -84,6 +112,7 @@ public class Instruction {
         Opcode opcode;
         String stringOperand = null;
 
+        // El mnemónico determina la aridad y el tipo de cada operando; cada rama valida antes de construir el objeto.
         switch (mnemonic) {
             case "MOV":
                 if (first == null || second == null) {
@@ -180,12 +209,25 @@ public class Instruction {
         return new Instruction(opcode, reg, reg2, value, line, Collections.emptyList(), stringOperand);
     }
 
+    /**
+     * Exige one register.
+     * @param mnemonic mnemónico de la instrucción
+     * @param first primer operando escrito
+     * @param second segundo operando escrito
+     * @param lineNumber número de línea de origen
+     */
     private static void requireOneRegister(String mnemonic, String first, String second, int lineNumber) {
         if (first == null || second != null) {
             throw error(lineNumber, mnemonic + " requiere exactamente un registro, ej. " + mnemonic + " AX");
         }
     }
 
+    /**
+     * Convierte el texto de un registro al valor del enum o genera un error de ensamblado.
+     * @param text texto que se analizará
+     * @param lineNumber número de línea
+     * @return valor calculado o estado consultado.
+     */
     private static RegisterName parseRegister(String text, int lineNumber) {
         try {
             RegisterName register = RegisterName.fromMnemonic(text);
@@ -196,6 +238,12 @@ public class Instruction {
         }
     }
 
+    /**
+     * Construye un error que incluye el número de línea fuente.
+     * @param lineNumber número de línea
+     * @param message mensaje incluido en la excepción
+     * @return valor calculado o estado consultado.
+     */
     private static IllegalArgumentException error(int lineNumber, String message) {
         return new IllegalArgumentException("Línea " + lineNumber + ": " + message);
     }
@@ -216,6 +264,7 @@ public class Instruction {
             for (int i = 0; i < parametros.size(); i++) bytes[i + 1] = parametros.get(i);
             return bytes;
         }
+        // El primer byte empaqueta opcode y registro en nibbles; el segundo almacena el operando o el registro secundario.
         int selector = register.getCode();
         int byte0 = (opcode.getCode() << 4) | selector;
         int byte1 = 0;
@@ -226,6 +275,12 @@ public class Instruction {
         return new int[]{byte0 & 0xFF, byte1 & 0xFF};
     }
 
+    /**
+     * Decodifica.
+     * @param byte0 primer byte
+     * @param byte1 segundo byte
+     * @return instrucción que se leyó o ejecutó, o null si no se ejecutó ninguna.
+     */
     public static Instruction decode(int byte0, int byte1) {
         return decode(new int[]{byte0, byte1});
     }
@@ -235,6 +290,7 @@ public class Instruction {
         if (bytes == null || bytes.length < 2) throw new IllegalArgumentException("Código de instrucción incompleto.");
         int byte0 = bytes[0] & 0xFF;
         int byte1 = bytes[1] & 0xFF;
+        // Se separan los dos nibbles del byte de control para recuperar opcode y registro selector.
         int opcodeBits = (byte0 >> 4) & 0x0F;
         int selector = byte0 & 0x0F;
         if (opcodeBits == Opcode.MOV.getCode() && selector == 0x0F) {
@@ -271,6 +327,15 @@ public class Instruction {
         return new Instruction(opcode, register, registerOperand, operand, text, parametros);
     }
 
+    /**
+     * Genera la forma textual de una instrucción decodificada.
+     * @param opcode código de operación
+     * @param register registro principal
+     * @param registerOperand segundo registro
+     * @param operand operando
+     * @param parametros lista de parámetros
+     * @return valor calculado o estado consultado.
+     */
     private static String reconstruirTexto(Opcode opcode, RegisterName register,
             RegisterName registerOperand, int operand, List<Integer> parametros) {
         switch (opcode) {
@@ -292,32 +357,81 @@ public class Instruction {
         }
     }
 
+    /**
+     * Indica si el opcode es JMP, JE o JNE.
+     * @param opcode código de operación
+     * @return true si se cumple la condición indicada; de lo contrario, false.
+     */
     private static boolean esSalto(Opcode opcode) {
         return opcode == Opcode.JMP || opcode == Opcode.JE || opcode == Opcode.JNE;
     }
 
+    /**
+     * Codifica sign magnitude.
+     * @param value valor de la celda
+     * @return valor numérico producido por la operación.
+     */
     public static int encodeSignMagnitude(int value) {
+        // El bit más alto guarda el signo y los siete bits inferiores guardan la magnitud.
         int sign = value < 0 ? 1 : 0;
         return (sign << 7) | (Math.abs(value) & 0x7F);
     }
 
+    /**
+     * Decodifica sign magnitude.
+     * @param byteValue byte que se convierte desde signo-magnitud
+     * @return valor numérico producido por la operación.
+     */
     public static int decodeSignMagnitude(int byteValue) {
         int magnitude = byteValue & 0x7F;
         return ((byteValue >> 7) & 1) == 1 ? -magnitude : magnitude;
     }
 
+    /**
+     * Formatea el byte como ocho dígitos binarios.
+     * @param value valor que se representará
+     * @return valor calculado o estado consultado.
+     */
     public static String toBinaryByte(int value) {
         StringBuilder sb = new StringBuilder(Integer.toBinaryString(value & 0xFF));
         while (sb.length() < 8) sb.insert(0, '0');
         return sb.toString();
     }
 
+    /**
+     * Devuelve el código de operación de la instrucción.
+     * @return valor calculado o recurso consultado.
+     */
     public Opcode getOpcode() { return opcode; }
+    /**
+     * Devuelve el registro principal de la instrucción.
+     * @return valor calculado o recurso consultado.
+     */
     public RegisterName getRegister() { return register; }
+    /**
+     * Devuelve el segundo registro, si el opcode lo requiere.
+     * @return valor calculado o recurso consultado.
+     */
     public RegisterName getRegisterOperand() { return registerOperand; }
+    /**
+     * Devuelve el operando numérico inmediato.
+     * @return valor numérico producido por la operación.
+     */
     public int getOperand() { return operand; }
+    /**
+     * Devuelve los valores inmutables asociados con PARAM.
+     * @return vista de los elementos correspondientes.
+     */
     public List<Integer> getParametros() { return parametros; }
+    /**
+     * Devuelve la línea ensamblador de origen.
+     * @return texto asociado con el estado o valor consultado.
+     */
     public String getSourceLine() { return sourceLine; }
+    /**
+     * Devuelve el literal textual asociado con MOV DX, si aplica.
+     * @return texto asociado con el estado o valor consultado.
+     */
     public String getStringOperand() { return stringOperand; }
 
     /** Costo de la instrucción en segundos simulados según la tabla del proyecto. */
@@ -336,6 +450,10 @@ public class Instruction {
         }
     }
 
+    /**
+     * Devuelve la línea ensamblador seguida de los bytes codificados en binario.
+     * @return representación textual de la instrucción y su codificación.
+     */
     @Override public String toString() {
         int[] bytes = encode();
         StringBuilder binario = new StringBuilder();

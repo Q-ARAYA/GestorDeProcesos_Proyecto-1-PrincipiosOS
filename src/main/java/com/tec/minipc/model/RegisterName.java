@@ -7,7 +7,6 @@ package com.tec.minipc.model;
 /**
  * Registros de propósito general del Mini PC.
  * Ocupan los 4 bits bajos (bits 4-7) de la primera palabra de la instrucción.
- *
  * NONE se usa para instrucciones que no referencian ningún registro (no debería
  * darse con el set actual, pero se deja como salvaguarda).
  */
@@ -22,16 +21,24 @@ public enum RegisterName {
 
     private final int code;
 
+    /**
+     * Inicializa RegisterName con los recursos y valores recibidos.
+     * @param code valor inicial usado por la instancia
+     */
     RegisterName(int code) {
         this.code = code;
     }
 
+    /**
+     * Devuelve el selector binario asignado al registro.
+     * @return valor numérico producido por la operación.
+     */
     public int getCode() {
         return code;
     }
 
     /**
-     * Busca el registro a partir de su código de 4 bits.
+     * Busca el registro correspondiente al selector de cuatro bits.
      * @param code código binario del registro (0-4)
      * @return el RegisterName correspondiente
      * @throws IllegalArgumentException si el código no corresponde a ningún registro válido.
@@ -46,7 +53,7 @@ public enum RegisterName {
     }
 
     /**
-     * Busca el registro a partir del mnemónico de texto (ej: "AX", "bx").
+     * Convierte el nombre textual en un registro admitido.
      * @param mnemonic el texto del registro tal como viene en el archivo .asm
      * @return el RegisterName correspondiente
      * @throws IllegalArgumentException si el mnemónico no existe.

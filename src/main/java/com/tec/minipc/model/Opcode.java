@@ -7,7 +7,6 @@ package com.tec.minipc.model;
 /**
  * Código de operación del set de instrucciones del Mini PC.
  * Ocupa los 4 bits altos (bits 0-3) de la primera palabra de la instrucción.
- *
  * 0001 LOAD
  * 0010 STORE
  * 0011 MOV
@@ -45,16 +44,24 @@ public enum Opcode {
 
     private final int code;
 
+    /**
+     * Inicializa Opcode con los recursos y valores recibidos.
+     * @param code valor inicial usado por la instancia
+     */
     Opcode(int code) {
         this.code = code;
     }
 
+    /**
+     * Devuelve el código binario asignado al opcode.
+     * @return valor numérico producido por la operación.
+     */
     public int getCode() {
         return code;
     }
 
     /**
-     * Busca el Opcode a partir de su valor de 4 bits.
+     * Busca el opcode correspondiente al código de cuatro bits y falla si no existe.
      * @throws IllegalArgumentException si el código no corresponde a ninguna operación válida.
      */
     public static Opcode fromCode(int code) {
@@ -68,7 +75,7 @@ public enum Opcode {
     }
 
     /**
-     * Busca el Opcode a partir del mnemónico de texto (ej: "LOAD", "mov").
+     * Convierte un mnemónico textual en el opcode admitido.
      * @throws IllegalArgumentException si el mnemónico no existe.
      */
     public static Opcode fromMnemonic(String mnemonic) {

@@ -32,6 +32,7 @@ public class RegistrosPanel extends JPanel {
     private final JLabel lblIr = crearValor();
     private final JLabel lblFlags = crearValor();
 
+    /** Inicializa RegistrosPanel con los recursos y valores recibidos. */
     public RegistrosPanel() {
         setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
         setLayout(new GridLayout(10, 2, 5, 5));
@@ -51,6 +52,11 @@ public class RegistrosPanel extends JPanel {
         actualizar(new Registers()); // valores iniciales en 0
     }
 
+    /**
+     * Añade al panel una fila para un registro y su etiqueta de valor.
+     * @param etiqueta texto de la etiqueta
+     * @param valor valor que se asignará
+     */
     private void agregarFila(String etiqueta, JLabel valor) {
         JLabel lbl = new JLabel(etiqueta);
         lbl.setFont(lbl.getFont().deriveFont(Font.BOLD));
@@ -65,6 +71,10 @@ public class RegistrosPanel extends JPanel {
         add(valor);
     }
 
+    /**
+     * Crea la etiqueta visual usada para mostrar un valor de registro.
+     * @return valor calculado o estado consultado.
+     */
     private JLabel crearValor() {
         JLabel lbl = new JLabel("0");
         lbl.setFont(lbl.getFont().deriveFont(Font.PLAIN, 13f));

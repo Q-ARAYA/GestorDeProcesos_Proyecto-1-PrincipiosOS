@@ -12,11 +12,20 @@ public class AssemblyException extends Exception {
 
     private final List<String> errores;
 
+    /**
+     * Inicializa AssemblyException con los recursos y valores recibidos.
+     * @param errores lista de errores de ensamblado
+     */
     public AssemblyException(List<String> errores) {
         super(construirMensaje(errores));
         this.errores = Collections.unmodifiableList(errores);
     }
 
+    /**
+     * Combina los errores de ensamblado en un mensaje legible para mostrar al usuario.
+     * @param errores errores recopilados
+     * @return texto asociado con el estado o valor consultado.
+     */
     private static String construirMensaje(List<String> errores) {
         StringBuilder sb = new StringBuilder();
         sb.append("El archivo .asm tiene ").append(errores.size()).append(" error(es) de formato:\n");

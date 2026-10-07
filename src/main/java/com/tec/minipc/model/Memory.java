@@ -5,16 +5,13 @@ import com.tec.minipc.core.PCB;
 
 /**
  * Memoria principal del Mini PC.
- *
  * Se divide en dos zonas contiguas:
- *   [0 .. osSize-1]        -> espacio del Sistema Operativo (reservado, ej. para el BCP)
- *   [osSize .. totalSize-1] -> espacio de Usuario (donde se carga el programa .asm)
- *
+ * [0 .. osSize-1]        -> espacio del Sistema Operativo (reservado, ej. para el BCP)
+ * [osSize .. totalSize-1] -> espacio de Usuario (donde se carga el programa .asm)
  * Tal como lo pide el enunciado, CADA LÍNEA DEL PROGRAMA OCUPA UNA SOLA POSICIÓN
  * de memoria (no dos). Esa posición guarda la instrucción ya parseada; su
  * representación en binario (2 bytes: opcode+registro, y el operando) se calcula
  * bajo demanda con Instruction.encode() solo para mostrarla en la interfaz.
- *
  * Una celda en null se considera "vacía" (nunca escrita).
  */
 public class Memory {
@@ -27,6 +24,11 @@ public class Memory {
     private final int osSize; // cantidad de celdas reservadas para el S.O. (desde 0)
     private final Object[] celdas;
 
+    /**
+     * Inicializa Memory con los recursos y valores recibidos.
+     * @param totalSize cantidad total de celdas
+     * @param osSize cantidad de celdas reservadas para el kernel
+     */
     public Memory(int totalSize, int osSize) {
         if (totalSize < TAMANO_MINIMO) {
             throw new IllegalArgumentException(
@@ -42,46 +44,91 @@ public class Memory {
         this.celdas = new Object[totalSize];
     }
 
+    /** Limpia todas las celdas de memoria principal. */
     public void clear() {
         for (int i = 0; i < celdas.length; i++) {
             celdas[i] = null;
         }
     }
 
+    /**
+     * Devuelve el número total de celdas de memoria principal.
+     * @return valor numérico producido por la operación.
+     */
     public int getTotalSize() {
         return totalSize;
     }
 
+    /**
+     * Devuelve cuántas celdas están reservadas para el kernel.
+     * @return valor numérico producido por la operación.
+     */
     public int getOsSize() { return osSize; }
 
+    /**
+     * Devuelve la primera dirección reservada al kernel.
+     * @return valor calculado o estado consultado.
+     */
     public int getOsStart() {
         return 0;
     }
 
+    /**
+     * Devuelve la última dirección reservada al kernel.
+     * @return valor calculado o estado consultado.
+     */
     public int getOsEnd() {
         return osSize - 1;
     }
 
+    /**
+     * Devuelve la primera dirección disponible para programas de usuario.
+     * @return valor calculado o estado consultado.
+     */
     public int getUserStart() {
         return osSize;
     }
 
+    /**
+     * Devuelve la última dirección disponible para programas de usuario.
+     * @return valor calculado o estado consultado.
+     */
     public int getUserEnd() {
         return totalSize - 1;
     }
 
+    /**
+     * Indica si la dirección está dentro de los límites de la memoria.
+     * @param address dirección de memoria consultada
+     * @return true si se cumple la condición indicada; de lo contrario, false.
+     */
     public boolean isValidAddress(int address) {
         return address >= 0 && address < totalSize;
     }
 
+    /**
+     * Indica si la dirección pertenece al kernel.
+     * @param address dirección de memoria consultada
+     * @return true si se cumple la condición indicada; de lo contrario, false.
+     */
     public boolean isOsAddress(int address) {
         return address >= getOsStart() && address <= getOsEnd();
     }
 
+    /**
+     * Indica si la dirección pertenece al espacio de usuario.
+     * @param address dirección de memoria consultada
+     * @return true si se cumple la condición indicada; de lo contrario, false.
+     */
     public boolean isUserAddress(int address) {
         return address >= getUserStart() && address <= getUserEnd();
     }
 
+    /**
+     * Realiza la operación write en Memory.
+     * @param address dirección de memoria consultada
+     * @param instruccion instrucción que se ejecuta
+     */
     public void write(int address, Instruction instruccion) {
         requireValid(address);
         celdas[address] = instruccion;
@@ -93,6 +140,11 @@ public class Memory {
         return celdas[address] instanceof Instruction ? (Instruction) celdas[address] : null;
     }
 
+    /**
+     * Convierte el contenido de la celda a texto para mostrarlo en la interfaz.
+     * @param address dirección de memoria consultada
+     * @return valor calculado o estado consultado.
+     */
     public String getDisplayValue(int address) {
         requireValid(address);
         Object value = celdas[address];
@@ -100,6 +152,11 @@ public class Memory {
         return value instanceof Instruction ? ((Instruction) value).getSourceLine() : String.valueOf(value);
     }
 
+    /**
+     * Indica si la celda de memoria está libre.
+     * @param address dirección de memoria consultada
+     * @return true si se cumple la condición indicada; de lo contrario, false.
+     */
     public boolean isEmpty(int address) {
         requireValid(address);
         return celdas[address] == null;
@@ -107,6 +164,7 @@ public class Memory {
 
     /** Reserva un bloque contiguo del kernel y escribe la imagen del BCP. */
     public int guardarBcp(PCB pcb) {
+        // Búsqueda de primera adecuación sobre el kernel: cada BCP requiere seis celdas consecutivas.
         for (int base = getOsStart(); base + CELDAS_POR_BCP - 1 <= getOsEnd(); base++) {
             boolean libre = true;
             for (int i = 0; i < CELDAS_POR_BCP; i++) {
@@ -140,6 +198,10 @@ public class Memory {
                 + " Siguiente BCP=" + pcb.getDireccionSiguienteBcp();
     }
 
+    /**
+     * Exige valid.
+     * @param address dirección de memoria consultada
+     */
     private void requireValid(int address) {
         if (!isValidAddress(address)) {
             throw new IndexOutOfBoundsException(
@@ -151,7 +213,6 @@ public class Memory {
      * Carga una lista de instrucciones ya parseadas a partir de userStart,
      * usando UNA celda por instrucción. Valida que el programa quepa en el
      * espacio de Usuario disponible.
-     *
      * @param instrucciones lista de instrucciones ya parseadas del .asm
      * @return la dirección (PC) donde debe iniciar la ejecución.
      */
@@ -174,6 +235,7 @@ public class Memory {
         if (startAddress < getUserStart() || startAddress + requiredCells - 1 > getUserEnd()) {
             throw new IllegalStateException("El programa no cabe en el espacio de usuario disponible.");
         }
+        // La región se verifica completa antes de escribir para evitar cargas parciales si una celda está ocupada.
         for (int i = 0; i < requiredCells; i++) {
             if (!isEmpty(startAddress + i)) {
                 throw new IllegalStateException("La región de memoria solicitada ya está ocupada.");
@@ -189,6 +251,7 @@ public class Memory {
 
     /** Libera una región de usuario cuando su proceso termina. */
     public void release(int startAddress, int size) {
+        // Solo se limpian direcciones de usuario; una liberación nunca debe borrar datos del kernel.
         for (int i = 0; i < size; i++) {
             int address = startAddress + i;
             if (isUserAddress(address)) {

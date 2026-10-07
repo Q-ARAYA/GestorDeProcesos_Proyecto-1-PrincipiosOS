@@ -17,6 +17,7 @@ public class ProcessManager {
     public static final int MAX_PROCESOS = 5;
     private static final int MAX_SEGUNDOS_POR_EJECUCION_AUTOMATICA = 10000;
 
+    /** Agrupa el BCP, los registros, la pila y el contexto de CPU pertenecientes a un trabajo. */
     public static final class Proceso {
         private final PCB pcb;
         private final Registers registros = new Registers();
@@ -25,18 +26,51 @@ public class ProcessManager {
         private Cpu cpu;
         private Integer entradaPendiente;
 
+        /**
+         * Inicializa Proceso con los recursos y valores recibidos.
+         * @param pcb bloque de control del proceso
+         * @param instrucciones instrucciones que se conservarán
+         */
         private Proceso(PCB pcb, List<Instruction> instrucciones) {
             this.pcb = pcb;
             this.instrucciones = Collections.unmodifiableList(new ArrayList<>(instrucciones));
             registros.setPc(-1);
         }
 
+        /**
+         * Devuelve el BCP que conserva el estado de este proceso.
+         * @return valor, objeto o colección descrita en el resumen del método.
+         */
         public PCB getPcb() { return pcb; }
+        /**
+         * Devuelve los registros asociados exclusivamente a este proceso.
+         * @return valor, objeto o colección descrita en el resumen del método.
+         */
         public Registers getRegistros() { return registros; }
+        /**
+         * Devuelve la pila privada del proceso.
+         * @return valor, objeto o colección descrita en el resumen del método.
+         */
         public ProcessStack getPila() { return pila; }
+        /**
+         * Devuelve la dirección base asignada al código del proceso.
+         * @return valor calculado o estado consultado.
+         */
         public int getBase() { return pcb.getDireccionBase(); }
+        /**
+         * Devuelve el número de instrucciones del programa.
+         * @return valor calculado o estado consultado.
+         */
         public int getTamano() { return pcb.getTamanoInstrucciones(); }
+        /**
+         * Devuelve la lista inmutable de instrucciones del proceso.
+         * @return vista de los elementos correspondientes.
+         */
         public List<Instruction> getInstrucciones() { return instrucciones; }
+        /**
+         * Devuelve la dirección que debe marcarse en las vistas de programa y memoria.
+         * @return valor calculado o estado consultado.
+         */
         public int getDireccionInstruccionActual() {
             return cpu != null && cpu.hayInstruccionEnCurso()
                     ? cpu.getDireccionInstruccionEnCurso() : registros.getPc();
@@ -57,8 +91,17 @@ public class ProcessManager {
     private Proceso actual;
     private int siguientesPid = 1;
 
+    /**
+     * Inicializa ProcessManager con los recursos y valores recibidos.
+     * @param memoria memoria principal asociada
+     */
     public ProcessManager(Memory memoria) { this(memoria, null); }
 
+    /**
+     * Inicializa ProcessManager con los recursos y valores recibidos.
+     * @param memoria memoria principal asociada
+     * @param almacenamiento valor inicial usado por la instancia
+     */
     public ProcessManager(Memory memoria, SecondaryStorage almacenamiento) {
         this.memoria = memoria;
         this.almacenamientoSecundario = almacenamiento;
@@ -101,9 +144,15 @@ public class ProcessManager {
         return proceso;
     }
 
+    /**
+     * Busca hueco.
+     * @param requerido cantidad de celdas solicitadas
+     * @return valor numérico producido por la operación.
+     */
     private int buscarHueco(int requerido) {
         int inicio = memoria.getUserStart();
         int ultimoInicio = memoria.getUserEnd() - requerido + 1;
+        // Primera adecuación: se revisa desde el inicio del área de usuario y se toma el primer bloque contiguo que cabe.
         for (int base = inicio; base <= ultimoInicio; base++) {
             boolean libre = true;
             for (int i = 0; i < requerido; i++) {
@@ -114,6 +163,11 @@ public class ProcessManager {
         return -1;
     }
 
+    /**
+     * Carga la imagen del proceso en un bloque libre y prepara sus registros y su CPU.
+     * @param proceso proceso afectado por la operación
+     * @return resultado generado por la operación.
+     */
     private boolean cargarEnMemoria(Proceso proceso) {
         int base = buscarHueco(proceso.getTamano());
         if (base < 0) return false;
@@ -131,6 +185,7 @@ public class ProcessManager {
 
     /** Admite trabajos en espera en orden FCFS cuando un bloque contiguo queda libre. */
     private void admitirEnEspera() {
+        // Se respeta FCFS también en esta cola: si el primero no cabe, no se adelanta a procesos posteriores.
         while (!esperaMemoria.isEmpty()) {
             Proceso siguiente = esperaMemoria.peekFirst();
             if (!cargarEnMemoria(siguiente)) return; // FCFS: no adelantar un trabajo más pequeño
@@ -139,6 +194,7 @@ public class ProcessManager {
         }
     }
 
+    /** Selecciona de la cabeza de la cola de listos el proceso que usará la CPU. */
     private void despacharSiguiente() {
         admitirEnEspera();
         actual = listos.pollFirst();
@@ -172,6 +228,7 @@ public class ProcessManager {
 
     /** Ejecuta una instrucción; FCFS mantiene la CPU hasta finalizar el trabajo. */
     public Instruction step() {
+        // El despacho ocurre cuando no existe un proceso actual; FCFS no expulsa al proceso que ya tiene la CPU.
         if (actual == null) despacharSiguiente();
         if (actual == null) return null;
         Instruction siguiente = memoria.read(actual.registros.getPc());
@@ -229,15 +286,51 @@ public class ProcessManager {
         listos.addLast(proceso);
     }
 
+    /**
+     * Devuelve la salida acumulada por las interrupciones de pantalla.
+     * @return vista de los elementos correspondientes.
+     */
     public List<String> getSalidaPantalla() { return Collections.unmodifiableList(salidaPantalla); }
+    /**
+     * Devuelve los eventos generados durante la simulación.
+     * @return vista de los elementos correspondientes.
+     */
     public List<String> getEventos() { return Collections.unmodifiableList(eventos); }
+    /**
+     * Devuelve el servicio de archivos simulado, si está configurado.
+     * @return valor, objeto o colección descrita en el resumen del método.
+     */
     public SimulatedFileSystem getSistemaArchivos() { return sistemaArchivos; }
+    /**
+     * Indica si existe un proceso bloqueado esperando un valor de teclado.
+     * @return true si se cumple la condición indicada; de lo contrario, false.
+     */
     public boolean hayEsperandoEntrada() { return !esperaEntrada.isEmpty(); }
+    /**
+     * Devuelve cuántos procesos están en la cola de espera por teclado.
+     * @return valor numérico producido por la operación.
+     */
     public int getCantidadEsperandoEntrada() { return esperaEntrada.size(); }
+    /**
+     * Indica si se puede avanzar.
+     * @return true si se cumple la condición indicada; de lo contrario, false.
+     */
     public boolean puedeAvanzar() { return actual != null || !listos.isEmpty() || !esperaMemoria.isEmpty(); }
+    /**
+     * Indica si hay suspendidos.
+     * @return true si se cumple la condición indicada; de lo contrario, false.
+     */
     public boolean haySuspendidos() { return !suspendidos.isEmpty(); }
+    /**
+     * Devuelve cuántos procesos están suspendidos.
+     * @return valor numérico producido por la operación.
+     */
     public int getCantidadSuspendidos() { return suspendidos.size(); }
 
+    /**
+     * Ejecuta los procesos pendientes respetando FCFS y los límites de seguridad.
+     * @return valor calculado o estado consultado.
+     */
     public int runAll() {
         int pasos = 0;
         while (actual != null || !listos.isEmpty() || !esperaMemoria.isEmpty()) {
@@ -253,9 +346,25 @@ public class ProcessManager {
         return pasos;
     }
 
+    /**
+     * Devuelve la lista no modificable de procesos admitidos.
+     * @return vista de los elementos correspondientes.
+     */
     public List<Proceso> getProcesos() { return Collections.unmodifiableList(procesos); }
+    /**
+     * Devuelve el proceso que actualmente ocupa la CPU.
+     * @return valor, objeto o colección descrita en el resumen del método.
+     */
     public Proceso getActual() { return actual; }
+    /**
+     * Indica si hay pendientes.
+     * @return true si se cumple la condición indicada; de lo contrario, false.
+     */
     public boolean hayPendientes() { return actual != null || !listos.isEmpty() || !esperaMemoria.isEmpty()
             || !esperaEntrada.isEmpty() || !suspendidos.isEmpty(); }
+    /**
+     * Indica si está vacio.
+     * @return true si se cumple la condición indicada; de lo contrario, false.
+     */
     public boolean estaVacio() { return procesos.isEmpty(); }
 }
