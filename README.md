@@ -10,7 +10,7 @@ Simulador de una minicomputadora desarrollado para el curso **IC-6600 Principios
 
 Representar de forma visual conceptos fundamentales de un sistema operativo: carga y ejecucion de programas, bloques de control de procesos (BCP), planificacion, memoria, registros, pila, llamadas al sistema y operaciones de entrada/salida. La aplicacion es una simulacion educativa; no controla hardware real.
 
-## Funcionalidades
+## Funcionalidades Alcanzadas
 
 - Carga y validacion de programas `.asm` mediante un ensamblador sencillo.
 - Ejecucion paso a paso o continua, con resaltado sincronizado de la instruccion actual en el codigo y en la memoria.
@@ -133,6 +133,5 @@ La planificacion implementada es FCFS y se simula un solo CPU. La memoria virtua
 
 ## Video de demostracion
 
-**Enlace:** pendiente de agregar despues de publicar el video.
+**Enlace:** https://youtu.be/NM324V0kTy8
 
-El video de entrega debe incluir narracion con audio y mostrar la carga y ejecucion de programas, la vista de BCP y memoria, la suspension y reanudacion, la entrada por teclado y las operaciones de archivo.
